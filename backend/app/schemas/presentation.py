@@ -14,6 +14,8 @@ class Slide(BaseModel):
     content: list[SlideContent]
     type: str  # title | content
     raw: str
+    image_query: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 class PresentationResponse(BaseModel):
