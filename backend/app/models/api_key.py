@@ -9,6 +9,7 @@ from app.database import Base
 class ProviderEnum(str, enum.Enum):
     openai = "openai"
     leonardo = "leonardo"
+    unsplash = "unsplash"
 
 
 class APIKey(Base):

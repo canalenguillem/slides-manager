@@ -39,6 +39,7 @@ export const presentationsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   delete: (id: string) => api.delete(`/presentations/${id}`),
+  generateImages: (id: string) => api.post(`/presentations/${id}/generate-images`),
 }
 
 export const apiKeysApi = {

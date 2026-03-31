@@ -4,6 +4,12 @@ import { APIKey } from '../types'
 
 const PROVIDERS = [
   {
+    id: 'unsplash' as const,
+    name: 'Unsplash',
+    description: 'Stock photos automatically matched to each slide topic. Free key at unsplash.com/developers',
+    placeholder: 'your-unsplash-access-key',
+  },
+  {
     id: 'openai' as const,
     name: 'OpenAI',
     description: 'GPT models for text generation and improvement',

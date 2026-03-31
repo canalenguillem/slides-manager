@@ -6,13 +6,33 @@ from sqlalchemy import select
 from bson import ObjectId
 from app.database import get_db, get_mongo
 from app.models.user import User
+from app.models.api_key import APIKey, ProviderEnum
 from app.models.presentation import Presentation
 from app.schemas.presentation import PresentationResponse, PresentationDetail
 from app.services.auth import get_current_user
+from app.services.encryption import decrypt_api_key
 from app.services.markdown_parser import parse_markdown_to_slides
 from app.services.image_service import enrich_slides_with_images
 
 router = APIRouter()
+
+
+async def _get_unsplash_key(user_id: str, db: AsyncSession) -> str:
+    """Return the user's active Unsplash API key (decrypted), or empty string."""
+    result = await db.execute(
+        select(APIKey).where(
+            APIKey.user_id == user_id,
+            APIKey.provider == ProviderEnum.unsplash,
+            APIKey.is_active == True,  # noqa: E712
+        )
+    )
+    key_row = result.scalar_one_or_none()
+    if key_row:
+        try:
+            return decrypt_api_key(key_row.encrypted_key)
+        except Exception:
+            pass
+    return ""
 
 
 @router.post(
@@ -38,7 +58,8 @@ async def upload_presentation(
         raise HTTPException(status_code=400, detail="File must be UTF-8 encoded")
 
     raw_slides = parse_markdown_to_slides(markdown_text)
-    slides = await enrich_slides_with_images(raw_slides)
+    unsplash_key = await _get_unsplash_key(current_user.id, db)
+    slides = await enrich_slides_with_images(raw_slides, unsplash_api_key=unsplash_key)
 
     mongo_doc = {
         "user_id": current_user.id,
@@ -122,6 +143,54 @@ async def get_presentation(
         created_at=presentation.created_at,
         updated_at=presentation.updated_at,
         slides=slides,
+    )
+
+
+@router.post("/{presentation_id}/generate-images", response_model=PresentationDetail)
+async def generate_images(
+    presentation_id: str,
+    db: AsyncSession = Depends(get_db),
+    mongo=Depends(get_mongo),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Presentation).where(
+            Presentation.id == presentation_id,
+            Presentation.user_id == current_user.id,
+        )
+    )
+    presentation = result.scalar_one_or_none()
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    if not presentation.mongo_doc_id:
+        raise HTTPException(status_code=400, detail="No slide data found")
+
+    mongo_doc = await mongo["presentations"].find_one(
+        {"_id": ObjectId(presentation.mongo_doc_id)}
+    )
+    if not mongo_doc:
+        raise HTTPException(status_code=404, detail="Slide data not found")
+
+    current_slides = mongo_doc.get("slides", [])
+    unsplash_key = await _get_unsplash_key(current_user.id, db)
+    enriched_slides = await enrich_slides_with_images(
+        current_slides, unsplash_api_key=unsplash_key
+    )
+
+    await mongo["presentations"].update_one(
+        {"_id": ObjectId(presentation.mongo_doc_id)},
+        {"$set": {"slides": enriched_slides}},
+    )
+
+    return PresentationDetail(
+        id=presentation.id,
+        title=presentation.title,
+        description=presentation.description,
+        slide_count=presentation.slide_count,
+        created_at=presentation.created_at,
+        updated_at=presentation.updated_at,
+        slides=enriched_slides,
     )
 
 
