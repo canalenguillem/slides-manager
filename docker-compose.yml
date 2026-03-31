@@ -1,0 +1,98 @@
+version: '3.9'
+
+services:
+  backend:
+    build: ./backend
+    container_name: slides_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DATABASE_URL=mysql+aiomysql://${MARIADB_USER}:${MARIADB_PASSWORD}@mariadb:3306/${MARIADB_DATABASE}
+      - MONGODB_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DATABASE}?authSource=admin
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
+    networks:
+      - slides_net
+
+  frontend:
+    build: ./frontend
+    container_name: slides_frontend
+    restart: unless-stopped
+    networks:
+      - slides_net
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: slides_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - slides_net
+
+  mariadb:
+    image: mariadb:11
+    container_name: slides_mariadb
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MARIADB_DATABASE=${MARIADB_DATABASE}
+      - MARIADB_USER=${MARIADB_USER}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - slides_net
+
+  mongodb:
+    image: mongo:4.4
+    container_name: slides_mongodb
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - slides_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: slides_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - slides_net
+
+volumes:
+  mariadb_data:
+  mongodb_data:
+  redis_data:
+  uploads_data:
+
+networks:
+  slides_net:
+    driver: bridge

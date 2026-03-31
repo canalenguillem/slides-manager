@@ -1,0 +1,31 @@
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel
+
+
+class SlideContent(BaseModel):
+    type: str  # bullet | text | heading3 | numbered
+    text: str
+
+
+class Slide(BaseModel):
+    index: int
+    title: str
+    content: list[SlideContent]
+    type: str  # title | content
+    raw: str
+
+
+class PresentationResponse(BaseModel):
+    id: str
+    title: str
+    description: Optional[str]
+    slide_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PresentationDetail(PresentationResponse):
+    slides: list[Slide] = []
