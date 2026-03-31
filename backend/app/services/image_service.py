@@ -61,10 +61,11 @@ async def enrich_slides_with_images(
     semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
 
     async def fetch_one(slide: dict[str, Any]) -> dict[str, Any]:
-        query = slide.get("image_query") or slide.get("title") or "abstract"
+        # Always derive query from title so re-generating fixes bad stored queries
+        query = slide.get("title") or slide.get("image_query") or "abstract"
         async with semaphore:
             async with httpx.AsyncClient() as client:
                 url = await _resolve_image(query, unsplash_api_key, client)
-        return {**slide, "image_url": url}
+        return {**slide, "image_query": query, "image_url": url}
 
     return list(await asyncio.gather(*[fetch_one(s) for s in slides]))

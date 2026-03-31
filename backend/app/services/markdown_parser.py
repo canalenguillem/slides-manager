@@ -1,23 +1,9 @@
 import re
 from typing import Any
 
-_STOP_WORDS = {
-    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-    'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'but', 'with',
-    'by', 'from', 'that', 'this', 'it', 'as', 'we', 'you', 'your',
-    'our', 'their', 'my', 'its', 'not', 'no', 'so', 'do', 'did', 'will',
-}
-
-
 def _generate_image_query(title: str) -> str:
-    if not title:
-        return "technology,abstract"
-    words = [
-        w.lower()
-        for w in re.findall(r'\b[a-zA-Z]{3,}\b', title)
-        if w.lower() not in _STOP_WORDS
-    ]
-    return ','.join(words[:3]) if words else "business,abstract"
+    """Use the slide title directly as the Unsplash search query."""
+    return title.strip() if title.strip() else "business abstract"
 
 
 def parse_markdown_to_slides(content: str) -> list[dict[str, Any]]:
