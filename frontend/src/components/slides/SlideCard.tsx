@@ -23,21 +23,23 @@ function getGradient(index: number): string {
   return GRADIENTS[index % GRADIENTS.length]
 }
 
-function getImageUrl(query: string): string {
-  return `https://source.unsplash.com/1920x1080/?${encodeURIComponent(query)}`
-}
-
 function SlideBackground({ slide }: { slide: Slide }) {
   const [imgFailed, setImgFailed] = useState(false)
   const gradient = getGradient(slide.index)
-  const query = slide.image_query || slide.title
+
+  // Prefer stored image_url from backend; fall back to on-the-fly Unsplash query
+  const imageUrl = !imgFailed
+    ? (slide.image_url ?? (slide.image_query
+        ? `https://source.unsplash.com/1920x1080/?${encodeURIComponent(slide.image_query)}`
+        : null))
+    : null
 
   return (
     <div className="absolute inset-0" style={{ background: gradient }}>
-      {query && !imgFailed && (
+      {imageUrl && (
         <img
-          key={query}
-          src={getImageUrl(query)}
+          key={imageUrl}
+          src={imageUrl}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
           onError={() => setImgFailed(true)}

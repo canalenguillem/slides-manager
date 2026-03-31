@@ -18,6 +18,7 @@ export interface Slide {
   type: 'title' | 'content'
   raw: string
   image_query?: string
+  image_url?: string | null
 }
 
 export interface Presentation {

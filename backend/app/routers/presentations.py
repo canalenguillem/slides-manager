@@ -10,6 +10,7 @@ from app.models.presentation import Presentation
 from app.schemas.presentation import PresentationResponse, PresentationDetail
 from app.services.auth import get_current_user
 from app.services.markdown_parser import parse_markdown_to_slides
+from app.services.image_service import enrich_slides_with_images
 
 router = APIRouter()
 
@@ -36,7 +37,8 @@ async def upload_presentation(
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="File must be UTF-8 encoded")
 
-    slides = parse_markdown_to_slides(markdown_text)
+    raw_slides = parse_markdown_to_slides(markdown_text)
+    slides = await enrich_slides_with_images(raw_slides)
 
     mongo_doc = {
         "user_id": current_user.id,
