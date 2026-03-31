@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 _TIMEOUT = 8.0
 _MAX_CONCURRENT = 4
-_UNSPLASH_API = "https://api.unsplash.com/photos/random"
+_UNSPLASH_SEARCH = "https://api.unsplash.com/search/photos"
 
 
 def _picsum_url(query: str) -> str:
@@ -22,12 +22,17 @@ async def _fetch_unsplash_api(query: str, api_key: str, client: httpx.AsyncClien
         return None
     try:
         response = await client.get(
-            _UNSPLASH_API,
-            params={"query": query, "orientation": "landscape", "client_id": api_key},
+            _UNSPLASH_SEARCH,
+            params={"query": query, "orientation": "landscape", "per_page": 1},
+            headers={"Authorization": f"Client-ID {api_key}"},
             timeout=_TIMEOUT,
         )
         if response.status_code == 200:
-            return response.json().get("urls", {}).get("regular")
+            results = response.json().get("results", [])
+            if results:
+                return results[0].get("urls", {}).get("regular")
+        else:
+            logger.warning("Unsplash API returned %s for '%s'", response.status_code, query)
     except Exception as exc:
         logger.warning("Unsplash API failed for '%s': %s", query, exc)
     return None
