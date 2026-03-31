@@ -49,3 +49,21 @@
     @apply block text-sm font-medium text-gray-700 mb-1;
   }
 }
+
+@keyframes slideEnterRight {
+  from { opacity: 0; transform: translateX(48px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes slideEnterLeft {
+  from { opacity: 0; transform: translateX(-48px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.slide-enter-right {
+  animation: slideEnterRight 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.slide-enter-left {
+  animation: slideEnterLeft 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

@@ -17,6 +17,7 @@ export interface Slide {
   content: SlideContent[]
   type: 'title' | 'content'
   raw: string
+  image_query?: string
 }
 
 export interface Presentation {
