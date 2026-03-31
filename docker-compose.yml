@@ -16,7 +16,7 @@ services:
       mariadb:
         condition: service_healthy
       mongodb:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_started
     networks:
@@ -74,6 +74,11 @@ services:
       - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
     volumes:
       - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - slides_net
 
