@@ -206,96 +206,98 @@ export default function EditPresentation() {
                 )}
               </div>
 
-              {/* RIGHT — editor */}
-              <div className="p-5 flex flex-col gap-3 border-l border-gray-100">
+              {/* RIGHT — editor (scrollable) */}
+              <div className="border-l border-gray-100 flex flex-col" style={{ maxHeight: '256px' }}>
+                <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
 
-                {/* Title */}
-                <div>
-                  <label className="label">Title</label>
-                  <input
-                    className="input"
-                    value={slide.title}
-                    onChange={(e) => updateSlideField(si, { title: e.target.value })}
-                    placeholder="Slide title"
-                  />
-                </div>
-
-                {/* Content items */}
-                <div>
-                  <label className="label">Content</label>
-                  <div className="flex flex-col gap-1.5">
-                    {slide.content.map((item, ci) => (
-                      <div key={ci} className="flex items-center gap-2">
-                        <select
-                          value={item.type}
-                          onChange={(e) => handleContentTypeChange(si, ci, e.target.value as SlideContent['type'])}
-                          className="input py-1 text-xs w-28 shrink-0"
-                        >
-                          {CONTENT_TYPES.map((t) => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
-                        <input
-                          className="input py-1 text-sm flex-1"
-                          value={item.text}
-                          onChange={(e) => handleContentChange(si, ci, e.target.value)}
-                          placeholder="Text…"
-                        />
-                        <button
-                          onClick={() => handleRemoveContent(si, ci)}
-                          className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => handleAddContent(si)}
-                      className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-0.5 w-fit"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Add item
-                    </button>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-gray-100" />
-
-                {/* Image prompt */}
-                <div>
-                  <label className="label">Image prompt</label>
-                  <div className="flex gap-2 items-start">
-                    <textarea
-                      className="input text-sm resize-none flex-1"
-                      rows={2}
-                      value={slide.prompt}
-                      onChange={(e) => updateSlideField(si, { prompt: e.target.value })}
-                      placeholder="Leave empty to auto-generate with OpenAI…"
+                  {/* Title */}
+                  <div>
+                    <label className="label">Title</label>
+                    <input
+                      className="input"
+                      value={slide.title}
+                      onChange={(e) => updateSlideField(si, { title: e.target.value })}
+                      placeholder="Slide title"
                     />
-                    <button
-                      onClick={() => handleGenerateImage(si)}
-                      disabled={slide.generating}
-                      className="btn-secondary text-sm py-1.5 px-3 shrink-0 flex items-center gap-1.5"
-                    >
-                      {slide.generating ? (
-                        <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </div>
+
+                  {/* Image prompt */}
+                  <div>
+                    <label className="label">Image prompt</label>
+                    <div className="flex gap-2 items-start">
+                      <textarea
+                        className="input text-sm resize-none flex-1"
+                        rows={2}
+                        value={slide.prompt}
+                        onChange={(e) => updateSlideField(si, { prompt: e.target.value })}
+                        placeholder="Leave empty to auto-generate with OpenAI…"
+                      />
+                      <button
+                        onClick={() => handleGenerateImage(si)}
+                        disabled={slide.generating}
+                        className="btn-secondary text-sm py-1.5 px-3 shrink-0 flex items-center gap-1.5"
+                      >
+                        {slide.generating ? (
+                          <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                        Generate
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-100" />
+
+                  {/* Content items */}
+                  <div>
+                    <label className="label">Content</label>
+                    <div className="flex flex-col gap-1.5">
+                      {slide.content.map((item, ci) => (
+                        <div key={ci} className="flex items-center gap-2">
+                          <select
+                            value={item.type}
+                            onChange={(e) => handleContentTypeChange(si, ci, e.target.value as SlideContent['type'])}
+                            className="input py-1 text-xs w-28 shrink-0"
+                          >
+                            {CONTENT_TYPES.map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                          <input
+                            className="input py-1 text-sm flex-1"
+                            value={item.text}
+                            onChange={(e) => handleContentChange(si, ci, e.target.value)}
+                            placeholder="Text…"
+                          />
+                          <button
+                            onClick={() => handleRemoveContent(si, ci)}
+                            className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => handleAddContent(si)}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-0.5 w-fit"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                      )}
-                      Generate
-                    </button>
+                        Add item
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
+                {/* Sticky footer */}
+                <div className="shrink-0 flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-white">
                   {slide.error ? (
                     <p className="text-sm text-red-600">{slide.error}</p>
                   ) : slide.saved ? (
