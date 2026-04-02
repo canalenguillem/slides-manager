@@ -290,6 +290,7 @@ async def generate_slide_image_endpoint(
         leonardo_api_key=leonardo_key,
         leonardo_model=body.model,
         unsplash_api_key=unsplash_key,
+        custom_prompt=body.prompt or None,
     )
 
     slides[slide_index] = updated_slide

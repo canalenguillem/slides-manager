@@ -196,6 +196,7 @@ async def generate_slide_image(
     leonardo_api_key: str = "",
     leonardo_model: str = DEFAULT_LEONARDO_MODEL,
     unsplash_api_key: str = "",
+    custom_prompt: str | None = None,
 ) -> dict[str, Any]:
     """Generate (or regenerate) an image for a single slide. Returns updated slide dict."""
     title = slide.get("title", "")
@@ -203,16 +204,19 @@ async def generate_slide_image(
 
     async with httpx.AsyncClient() as client:
         if openai_api_key and leonardo_api_key:
-            prompt = await _openai_image_prompt(title, content, openai_api_key, client)
-            if not prompt:
-                prompt = _generate_image_query(title, content)
+            if custom_prompt:
+                prompt = custom_prompt
+            else:
+                prompt = await _openai_image_prompt(title, content, openai_api_key, client)
+                if not prompt:
+                    prompt = _generate_image_query(title, content)
             url = await _fetch_with_leonardo(prompt, leonardo_model, leonardo_api_key, client)
             if not url:
                 url = await _fetch_unsplash(prompt, unsplash_api_key, client)
             if not url:
                 url = await _resolve_picsum(prompt, client)
         else:
-            prompt = _generate_image_query(title, content)
+            prompt = custom_prompt or _generate_image_query(title, content)
             url = await _fetch_unsplash(prompt, unsplash_api_key, client)
             if not url:
                 url = await _resolve_picsum(prompt, client)

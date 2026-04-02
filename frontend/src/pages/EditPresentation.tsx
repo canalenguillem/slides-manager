@@ -14,7 +14,7 @@ interface SlideState {
   title: string
   content: SlideContent[]
   image_url?: string | null
-  image_query?: string
+  prompt: string          // editable image prompt
   saving: boolean
   saved: boolean
   generating: boolean
@@ -26,7 +26,7 @@ function initSlideStates(slides: Slide[]): SlideState[] {
     title: s.title,
     content: s.content.map((c) => ({ ...c })),
     image_url: s.image_url,
-    image_query: s.image_query,
+    prompt: s.image_query ?? '',
     saving: false,
     saved: false,
     generating: false,
@@ -55,9 +55,8 @@ export default function EditPresentation() {
       .finally(() => setLoading(false))
   }, [id])
 
-  const updateSlideField = (index: number, patch: Partial<SlideState>) => {
+  const updateSlideField = (index: number, patch: Partial<SlideState>) =>
     setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)))
-  }
 
   const handleSaveSlide = async (index: number) => {
     if (!id) return
@@ -78,53 +77,41 @@ export default function EditPresentation() {
     if (!id) return
     updateSlideField(index, { generating: true, error: '' })
     try {
-      const res = await presentationsApi.generateSlideImage(id, index, model)
+      const prompt = slides[index].prompt.trim() || undefined
+      const res = await presentationsApi.generateSlideImage(id, index, model, prompt)
       updateSlideField(index, {
         generating: false,
         image_url: res.data.image_url,
-        image_query: res.data.image_query,
+        prompt: res.data.image_query ?? slides[index].prompt,
       })
     } catch {
       updateSlideField(index, { generating: false, error: 'Image generation failed' })
     }
   }
 
-  const handleContentChange = (slideIdx: number, contentIdx: number, text: string) => {
-    setSlides((prev) =>
-      prev.map((s, i) => {
-        if (i !== slideIdx) return s
-        const content = s.content.map((c, ci) => (ci === contentIdx ? { ...c, text } : c))
-        return { ...s, content }
-      })
-    )
-  }
-
-  const handleContentTypeChange = (slideIdx: number, contentIdx: number, type: SlideContent['type']) => {
-    setSlides((prev) =>
-      prev.map((s, i) => {
-        if (i !== slideIdx) return s
-        const content = s.content.map((c, ci) => (ci === contentIdx ? { ...c, type } : c))
-        return { ...s, content }
-      })
-    )
-  }
-
-  const handleAddContent = (slideIdx: number) => {
+  const handleContentChange = (si: number, ci: number, text: string) =>
     setSlides((prev) =>
       prev.map((s, i) =>
-        i === slideIdx ? { ...s, content: [...s.content, { type: 'bullet', text: '' }] } : s
+        i !== si ? s : { ...s, content: s.content.map((c, j) => (j === ci ? { ...c, text } : c)) }
       )
     )
-  }
 
-  const handleRemoveContent = (slideIdx: number, contentIdx: number) => {
+  const handleContentTypeChange = (si: number, ci: number, type: SlideContent['type']) =>
     setSlides((prev) =>
-      prev.map((s, i) => {
-        if (i !== slideIdx) return s
-        return { ...s, content: s.content.filter((_, ci) => ci !== contentIdx) }
-      })
+      prev.map((s, i) =>
+        i !== si ? s : { ...s, content: s.content.map((c, j) => (j === ci ? { ...c, type } : c)) }
+      )
     )
-  }
+
+  const handleAddContent = (si: number) =>
+    setSlides((prev) =>
+      prev.map((s, i) => (i !== si ? s : { ...s, content: [...s.content, { type: 'bullet', text: '' }] }))
+    )
+
+  const handleRemoveContent = (si: number, ci: number) =>
+    setSlides((prev) =>
+      prev.map((s, i) => (i !== si ? s : { ...s, content: s.content.filter((_, j) => j !== ci) }))
+    )
 
   if (loading) {
     return (
@@ -146,7 +133,7 @@ export default function EditPresentation() {
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <button
             onClick={() => navigate(`/presentations/${id}`)}
@@ -161,7 +148,6 @@ export default function EditPresentation() {
           <p className="text-sm text-gray-500 mt-0.5">{slides.length} slides</p>
         </div>
 
-        {/* Model selector */}
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Image model</label>
           <select
@@ -177,32 +163,28 @@ export default function EditPresentation() {
       </div>
 
       {/* Slide cards */}
-      <div className="flex flex-col gap-6">
-        {slides.map((slide, slideIdx) => (
-          <div key={slideIdx} className="card p-0 overflow-hidden">
-            <div className="grid grid-cols-[2fr_3fr]">
+      <div className="flex flex-col gap-5">
+        {slides.map((slide, si) => (
+          <div key={si} className="card p-0 overflow-hidden">
+            <div className="grid grid-cols-[5fr_7fr] items-stretch">
 
-              {/* LEFT — slide preview (16:9) */}
-              <div className="relative bg-gray-900 flex flex-col" style={{ aspectRatio: '16/9' }}>
-                {slide.image_url ? (
+              {/* LEFT — fixed-height image preview */}
+              <div className="relative bg-gray-900 h-64 overflow-hidden">
+                {slide.image_url && (
                   <img
                     src={slide.image_url}
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover opacity-75"
                   />
-                ) : null}
+                )}
                 <div className="absolute inset-0 bg-black/40" />
 
-                {/* Slide content overlay */}
-                <div className="relative z-10 flex flex-col h-full p-4">
-                  <span className="text-xs font-mono text-white/50 mb-auto">
-                    {slideIdx + 1} / {slides.length}
-                  </span>
-                  <div className="flex flex-col gap-1">
+                {/* Slide number + content overlay */}
+                <div className="relative z-10 flex flex-col h-full p-4 pointer-events-none">
+                  <span className="text-xs font-mono text-white/50">{si + 1} / {slides.length}</span>
+                  <div className="mt-auto flex flex-col gap-0.5">
                     {slide.title && (
-                      <p className="text-white font-bold leading-tight text-sm line-clamp-2">
-                        {slide.title}
-                      </p>
+                      <p className="text-white font-bold text-sm leading-snug line-clamp-2">{slide.title}</p>
                     )}
                     {slide.content.slice(0, 3).map((c, i) => (
                       <p key={i} className="text-white/60 text-xs truncate">· {c.text}</p>
@@ -213,83 +195,54 @@ export default function EditPresentation() {
                   </div>
                 </div>
 
-                {/* Regenerate button */}
-                <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/20">
-                  <button
-                    onClick={() => handleGenerateImage(slideIdx)}
-                    disabled={slide.generating}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/90 hover:bg-white text-gray-800 text-sm font-medium transition-colors disabled:opacity-60 shadow"
-                  >
-                    {slide.generating ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-                        Generating…
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        Regenerate image
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Generating overlay (always visible when active) */}
+                {/* Generating overlay */}
                 {slide.generating && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40">
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/90 text-gray-800 text-sm font-medium shadow">
-                      <div className="w-3.5 h-3.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/90 text-gray-800 text-sm font-medium shadow">
+                      <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                       Generating…
                     </div>
-                  </div>
-                )}
-
-                {/* Prompt hint */}
-                {slide.image_query && !slide.generating && (
-                  <div className="absolute bottom-0 left-0 right-0 z-10 px-3 py-1.5 bg-black/50">
-                    <p className="text-white/50 text-xs truncate">{slide.image_query}</p>
                   </div>
                 )}
               </div>
 
               {/* RIGHT — editor */}
-              <div className="p-5 flex flex-col gap-4 border-l border-gray-100">
+              <div className="p-5 flex flex-col gap-3 border-l border-gray-100">
+
                 {/* Title */}
                 <div>
                   <label className="label">Title</label>
                   <input
                     className="input"
                     value={slide.title}
-                    onChange={(e) => updateSlideField(slideIdx, { title: e.target.value })}
+                    onChange={(e) => updateSlideField(si, { title: e.target.value })}
                     placeholder="Slide title"
                   />
                 </div>
 
                 {/* Content items */}
-                <div className="flex-1">
+                <div>
                   <label className="label">Content</label>
-                  <div className="flex flex-col gap-2">
-                    {slide.content.map((item, contentIdx) => (
-                      <div key={contentIdx} className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1.5">
+                    {slide.content.map((item, ci) => (
+                      <div key={ci} className="flex items-center gap-2">
                         <select
                           value={item.type}
-                          onChange={(e) => handleContentTypeChange(slideIdx, contentIdx, e.target.value as SlideContent['type'])}
-                          className="input py-1.5 text-xs w-28 shrink-0"
+                          onChange={(e) => handleContentTypeChange(si, ci, e.target.value as SlideContent['type'])}
+                          className="input py-1 text-xs w-28 shrink-0"
                         >
                           {CONTENT_TYPES.map((t) => (
                             <option key={t} value={t}>{t}</option>
                           ))}
                         </select>
                         <input
-                          className="input py-1.5 text-sm flex-1"
+                          className="input py-1 text-sm flex-1"
                           value={item.text}
-                          onChange={(e) => handleContentChange(slideIdx, contentIdx, e.target.value)}
+                          onChange={(e) => handleContentChange(si, ci, e.target.value)}
                           placeholder="Text…"
                         />
                         <button
-                          onClick={() => handleRemoveContent(slideIdx, contentIdx)}
+                          onClick={() => handleRemoveContent(si, ci)}
                           className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,8 +252,8 @@ export default function EditPresentation() {
                       </div>
                     ))}
                     <button
-                      onClick={() => handleAddContent(slideIdx)}
-                      className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-1 w-fit"
+                      onClick={() => handleAddContent(si)}
+                      className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-0.5 w-fit"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -310,8 +263,39 @@ export default function EditPresentation() {
                   </div>
                 </div>
 
+                {/* Divider */}
+                <div className="border-t border-gray-100" />
+
+                {/* Image prompt */}
+                <div>
+                  <label className="label">Image prompt</label>
+                  <div className="flex gap-2 items-start">
+                    <textarea
+                      className="input text-sm resize-none flex-1"
+                      rows={2}
+                      value={slide.prompt}
+                      onChange={(e) => updateSlideField(si, { prompt: e.target.value })}
+                      placeholder="Leave empty to auto-generate with OpenAI…"
+                    />
+                    <button
+                      onClick={() => handleGenerateImage(si)}
+                      disabled={slide.generating}
+                      className="btn-secondary text-sm py-1.5 px-3 shrink-0 flex items-center gap-1.5"
+                    >
+                      {slide.generating ? (
+                        <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                      Generate
+                    </button>
+                  </div>
+                </div>
+
                 {/* Footer */}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
                   {slide.error ? (
                     <p className="text-sm text-red-600">{slide.error}</p>
                   ) : slide.saved ? (
@@ -320,7 +304,7 @@ export default function EditPresentation() {
                     <span />
                   )}
                   <button
-                    onClick={() => handleSaveSlide(slideIdx)}
+                    onClick={() => handleSaveSlide(si)}
                     disabled={slide.saving}
                     className="btn-primary text-sm py-1.5 px-4"
                   >

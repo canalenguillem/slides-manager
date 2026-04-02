@@ -25,6 +25,7 @@ class SlideUpdate(BaseModel):
 
 class GenerateSlideImageRequest(BaseModel):
     model: str = "gpt-image-1.5"
+    prompt: Optional[str] = None  # if set, skips OpenAI and uses this prompt directly
 
 
 class PresentationResponse(BaseModel):
