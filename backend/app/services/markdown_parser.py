@@ -1,9 +1,16 @@
 import re
 from typing import Any
 
-def _generate_image_query(title: str) -> str:
-    """Use the slide title directly as the Unsplash search query."""
-    return title.strip() if title.strip() else "business abstract"
+def _generate_image_query(title: str, content: list[dict[str, str]]) -> str:
+    """Build a search query from the title + a few keywords from the content."""
+    parts = [title.strip()] if title.strip() else []
+    # Add first 3 words of each of the first 3 content items as context
+    for item in content[:3]:
+        words = item.get("text", "").split()[:3]
+        if words:
+            parts.append(" ".join(words))
+    query = " ".join(parts)
+    return query if query.strip() else "business abstract"
 
 
 def parse_markdown_to_slides(content: str) -> list[dict[str, Any]]:
@@ -66,5 +73,5 @@ def _parse_single_slide(raw: str, index: int) -> dict[str, Any]:
         "content": content,
         "type": slide_type,
         "raw": raw,
-        "image_query": _generate_image_query(title),
+        "image_query": _generate_image_query(title, content),
     }

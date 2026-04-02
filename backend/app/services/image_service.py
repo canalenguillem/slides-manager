@@ -5,6 +5,8 @@ from typing import Any
 
 import httpx
 
+from app.services.markdown_parser import _generate_image_query
+
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = 8.0
@@ -61,8 +63,11 @@ async def enrich_slides_with_images(
     semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
 
     async def fetch_one(slide: dict[str, Any]) -> dict[str, Any]:
-        # Always derive query from title so re-generating fixes bad stored queries
-        query = slide.get("title") or slide.get("image_query") or "abstract"
+        # Rebuild query from title + content so regenerating always improves on old stored queries
+        query = _generate_image_query(
+            slide.get("title", ""),
+            slide.get("content", []),
+        )
         async with semaphore:
             async with httpx.AsyncClient() as client:
                 url = await _resolve_image(query, unsplash_api_key, client)
