@@ -8,9 +8,11 @@ interface Props {
 }
 
 export default function UploadForm({ onSuccess, onCancel }: Props) {
+  const [mode, setMode] = useState<'file' | 'paste'>('file')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [pasteContent, setPasteContent] = useState('')
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -38,7 +40,8 @@ export default function UploadForm({ onSuccess, onCancel }: Props) {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!file) return setError('Please select a Markdown file')
+    if (mode === 'file' && !file) return setError('Please select a Markdown file')
+    if (mode === 'paste' && !pasteContent.trim()) return setError('Please paste some Markdown content')
     if (!title.trim()) return setError('Please enter a title')
 
     setLoading(true)
@@ -47,7 +50,13 @@ export default function UploadForm({ onSuccess, onCancel }: Props) {
     const formData = new FormData()
     formData.append('title', title.trim())
     if (description.trim()) formData.append('description', description.trim())
-    formData.append('file', file)
+
+    if (mode === 'file' && file) {
+      formData.append('file', file)
+    } else {
+      const blob = new Blob([pasteContent], { type: 'text/markdown' })
+      formData.append('file', blob, 'presentation.md')
+    }
 
     try {
       const res = await presentationsApi.upload(formData)
@@ -65,7 +74,7 @@ export default function UploadForm({ onSuccess, onCancel }: Props) {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">New Presentation</h2>
-          <p className="text-sm text-gray-500 mt-1">Upload a Markdown file to generate slides</p>
+          <p className="text-sm text-gray-500 mt-1">Upload a Markdown file or paste content directly</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
@@ -90,8 +99,33 @@ export default function UploadForm({ onSuccess, onCancel }: Props) {
             />
           </div>
 
-          <div>
-            <label className="label">Markdown file *</label>
+          {/* Mode toggle */}
+          <div className="flex rounded-lg border border-gray-200 p-1 gap-1">
+            <button
+              type="button"
+              onClick={() => { setMode('file'); setError('') }}
+              className={`flex-1 text-sm py-1.5 rounded-md transition-colors font-medium ${
+                mode === 'file'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Upload file
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('paste'); setError('') }}
+              className={`flex-1 text-sm py-1.5 rounded-md transition-colors font-medium ${
+                mode === 'paste'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Paste content
+            </button>
+          </div>
+
+          {mode === 'file' ? (
             <div
               onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
               onDragLeave={() => setDragging(false)}
@@ -126,7 +160,15 @@ export default function UploadForm({ onSuccess, onCancel }: Props) {
                 </div>
               )}
             </div>
-          </div>
+          ) : (
+            <textarea
+              className="input font-mono text-sm resize-none"
+              rows={10}
+              value={pasteContent}
+              onChange={(e) => setPasteContent(e.target.value)}
+              placeholder={`# My Presentation\n\n---\n\n## Slide 1\n\n- Bullet point\n- Another point\n\n---\n\n## Slide 2\n\nContent here...`}
+            />
+          )}
 
           {error && (
             <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
