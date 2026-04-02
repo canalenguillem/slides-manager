@@ -17,12 +17,12 @@ from app.services.image_service import enrich_slides_with_images
 router = APIRouter()
 
 
-async def _get_unsplash_key(user_id: str, db: AsyncSession) -> str:
-    """Return the user's active Unsplash API key (decrypted), or empty string."""
+async def _get_api_key(provider: ProviderEnum, user_id: str, db: AsyncSession) -> str:
+    """Return the user's active API key for a provider (decrypted), or empty string."""
     result = await db.execute(
         select(APIKey).where(
             APIKey.user_id == user_id,
-            APIKey.provider == ProviderEnum.unsplash,
+            APIKey.provider == provider,
             APIKey.is_active == True,  # noqa: E712
         )
     )
@@ -58,8 +58,15 @@ async def upload_presentation(
         raise HTTPException(status_code=400, detail="File must be UTF-8 encoded")
 
     raw_slides = parse_markdown_to_slides(markdown_text)
-    unsplash_key = await _get_unsplash_key(current_user.id, db)
-    slides = await enrich_slides_with_images(raw_slides, unsplash_api_key=unsplash_key)
+    openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
+    leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
+    unsplash_key = await _get_api_key(ProviderEnum.unsplash, current_user.id, db)
+    slides = await enrich_slides_with_images(
+        raw_slides,
+        openai_api_key=openai_key,
+        leonardo_api_key=leonardo_key,
+        unsplash_api_key=unsplash_key,
+    )
 
     mongo_doc = {
         "user_id": current_user.id,
@@ -173,9 +180,14 @@ async def generate_images(
         raise HTTPException(status_code=404, detail="Slide data not found")
 
     current_slides = mongo_doc.get("slides", [])
-    unsplash_key = await _get_unsplash_key(current_user.id, db)
+    openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
+    leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
+    unsplash_key = await _get_api_key(ProviderEnum.unsplash, current_user.id, db)
     enriched_slides = await enrich_slides_with_images(
-        current_slides, unsplash_api_key=unsplash_key
+        current_slides,
+        openai_api_key=openai_key,
+        leonardo_api_key=leonardo_key,
+        unsplash_api_key=unsplash_key,
     )
 
     await mongo["presentations"].update_one(
