@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class SlideContent(BaseModel):
-    type: str  # bullet | text | heading3 | numbered
+    type: str  # bullet | text | heading2 | heading3 | numbered
     text: str
 
 
@@ -16,6 +16,15 @@ class Slide(BaseModel):
     raw: str
     image_query: Optional[str] = None
     image_url: Optional[str] = None
+
+
+class SlideUpdate(BaseModel):
+    title: str
+    content: list[SlideContent]
+
+
+class GenerateSlideImageRequest(BaseModel):
+    model: str = "gpt-image-1.5"
 
 
 class PresentationResponse(BaseModel):

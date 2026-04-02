@@ -11,10 +11,24 @@ logger = logging.getLogger(__name__)
 
 _TIMEOUT = 15.0
 _OPENAI_CHAT = "https://api.openai.com/v1/chat/completions"
-_LEONARDO_GENERATIONS = "https://cloud.leonardo.ai/api/rest/v1/generations"
+_LEONARDO_V1 = "https://cloud.leonardo.ai/api/rest/v1/generations"
+_LEONARDO_V2 = "https://cloud.leonardo.ai/api/rest/v2/generations"
 _UNSPLASH_SEARCH = "https://api.unsplash.com/search/photos"
-# Leonardo Phoenix model — fast, high quality, great for backgrounds
-_LEONARDO_MODEL_ID = "6b645e3a-d64f-4341-a6d8-7a3690fbf042"
+
+LEONARDO_MODELS: dict[str, dict] = {
+    "gpt-image-1.5": {
+        "api_version": "v2",
+        "width": 1536,
+        "height": 1024,
+    },
+    "phoenix": {
+        "api_version": "v1",
+        "model_id": "6b645e3a-d64f-4341-a6d8-7a3690fbf042",
+        "width": 1472,
+        "height": 832,
+    },
+}
+DEFAULT_LEONARDO_MODEL = "gpt-image-1.5"
 
 _SYSTEM_PROMPT = (
     "You are a professional presentation designer. "
@@ -57,35 +71,56 @@ async def _openai_image_prompt(
 
 # ── Leonardo ──────────────────────────────────────────────────────────────────
 
-async def _leonardo_start(prompt: str, api_key: str, client: httpx.AsyncClient) -> str | None:
+async def _leonardo_start(
+    prompt: str, model_key: str, api_key: str, client: httpx.AsyncClient
+) -> str | None:
+    cfg = LEONARDO_MODELS.get(model_key, LEONARDO_MODELS[DEFAULT_LEONARDO_MODEL])
     try:
-        r = await client.post(
-            _LEONARDO_GENERATIONS,
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
+        if cfg["api_version"] == "v2":
+            body: dict[str, Any] = {
+                "public": False,
+                "model": model_key,
+                "parameters": {
+                    "mode": "QUALITY",
+                    "prompt": prompt,
+                    "quantity": 1,
+                    "width": cfg["width"],
+                    "height": cfg["height"],
+                    "prompt_enhance": "OFF",
+                },
+            }
+            endpoint = _LEONARDO_V2
+        else:
+            body = {
                 "prompt": prompt,
-                "modelId": _LEONARDO_MODEL_ID,
-                "width": 1472,
-                "height": 832,
+                "modelId": cfg["model_id"],
+                "width": cfg["width"],
+                "height": cfg["height"],
                 "num_images": 1,
                 "public": False,
-            },
+            }
+            endpoint = _LEONARDO_V1
+
+        r = await client.post(
+            endpoint,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=body,
             timeout=30.0,
         )
         if r.status_code == 200:
             return r.json()["sdGenerationJob"]["generationId"]
-        logger.warning("Leonardo start returned %s: %s", r.status_code, r.text[:200])
+        logger.warning("Leonardo start returned %s: %s", r.status_code, r.text[:300])
     except Exception as exc:
         logger.warning("Leonardo start failed: %s", exc)
     return None
 
 
 async def _leonardo_poll(gen_id: str, api_key: str, client: httpx.AsyncClient) -> str | None:
-    for _ in range(30):  # up to 60 s
+    for _ in range(40):  # up to 80 s
         await asyncio.sleep(2)
         try:
             r = await client.get(
-                f"{_LEONARDO_GENERATIONS}/{gen_id}",
+                f"{_LEONARDO_V1}/{gen_id}",
                 headers={"Authorization": f"Bearer {api_key}"},
                 timeout=_TIMEOUT,
             )
@@ -106,9 +141,9 @@ async def _leonardo_poll(gen_id: str, api_key: str, client: httpx.AsyncClient) -
 
 
 async def _fetch_with_leonardo(
-    prompt: str, api_key: str, client: httpx.AsyncClient
+    prompt: str, model_key: str, api_key: str, client: httpx.AsyncClient
 ) -> str | None:
-    gen_id = await _leonardo_start(prompt, api_key, client)
+    gen_id = await _leonardo_start(prompt, model_key, api_key, client)
     if not gen_id:
         return None
     return await _leonardo_poll(gen_id, api_key, client)
@@ -153,41 +188,58 @@ async def _resolve_picsum(query: str, client: httpx.AsyncClient) -> str:
     return source
 
 
-# ── Main entrypoint ───────────────────────────────────────────────────────────
+# ── Single-slide image generation (used by the edit endpoint) ─────────────────
+
+async def generate_slide_image(
+    slide: dict[str, Any],
+    openai_api_key: str = "",
+    leonardo_api_key: str = "",
+    leonardo_model: str = DEFAULT_LEONARDO_MODEL,
+    unsplash_api_key: str = "",
+) -> dict[str, Any]:
+    """Generate (or regenerate) an image for a single slide. Returns updated slide dict."""
+    title = slide.get("title", "")
+    content = slide.get("content", [])
+
+    async with httpx.AsyncClient() as client:
+        if openai_api_key and leonardo_api_key:
+            prompt = await _openai_image_prompt(title, content, openai_api_key, client)
+            if not prompt:
+                prompt = _generate_image_query(title, content)
+            url = await _fetch_with_leonardo(prompt, leonardo_model, leonardo_api_key, client)
+            if not url:
+                url = await _fetch_unsplash(prompt, unsplash_api_key, client)
+            if not url:
+                url = await _resolve_picsum(prompt, client)
+        else:
+            prompt = _generate_image_query(title, content)
+            url = await _fetch_unsplash(prompt, unsplash_api_key, client)
+            if not url:
+                url = await _resolve_picsum(prompt, client)
+
+    return {**slide, "image_query": prompt, "image_url": url}
+
+
+# ── Bulk enrichment (used on upload / generate-all) ──────────────────────────
 
 async def enrich_slides_with_images(
     slides: list[dict[str, Any]],
     openai_api_key: str = "",
     leonardo_api_key: str = "",
+    leonardo_model: str = DEFAULT_LEONARDO_MODEL,
     unsplash_api_key: str = "",
 ) -> list[dict[str, Any]]:
     use_ai = bool(openai_api_key and leonardo_api_key)
-    # Limit concurrency more when waiting on Leonardo (generation takes ~20s each)
     semaphore = asyncio.Semaphore(3 if use_ai else 4)
 
     async def fetch_one(slide: dict[str, Any]) -> dict[str, Any]:
-        title = slide.get("title", "")
-        content = slide.get("content", [])
         async with semaphore:
-            async with httpx.AsyncClient() as client:
-                if use_ai:
-                    # Step 1: ask OpenAI for a vivid image prompt
-                    prompt = await _openai_image_prompt(title, content, openai_api_key, client)
-                    if not prompt:
-                        prompt = _generate_image_query(title, content)
-                    # Step 2: generate the image with Leonardo
-                    url = await _fetch_with_leonardo(prompt, leonardo_api_key, client)
-                    if not url:
-                        # Fallback chain: Unsplash → Picsum
-                        url = await _fetch_unsplash(prompt, unsplash_api_key, client)
-                    if not url:
-                        url = await _resolve_picsum(prompt, client)
-                    return {**slide, "image_query": prompt, "image_url": url}
-                else:
-                    query = _generate_image_query(title, content)
-                    url = await _fetch_unsplash(query, unsplash_api_key, client)
-                    if not url:
-                        url = await _resolve_picsum(query, client)
-                    return {**slide, "image_query": query, "image_url": url}
+            return await generate_slide_image(
+                slide,
+                openai_api_key=openai_api_key,
+                leonardo_api_key=leonardo_api_key,
+                leonardo_model=leonardo_model,
+                unsplash_api_key=unsplash_api_key,
+            )
 
     return list(await asyncio.gather(*[fetch_one(s) for s in slides]))

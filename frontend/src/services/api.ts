@@ -40,6 +40,10 @@ export const presentationsApi = {
     }),
   delete: (id: string) => api.delete(`/presentations/${id}`),
   generateImages: (id: string) => api.post(`/presentations/${id}/generate-images`),
+  updateSlide: (id: string, index: number, data: { title: string; content: { type: string; text: string }[] }) =>
+    api.patch(`/presentations/${id}/slides/${index}`, data),
+  generateSlideImage: (id: string, index: number, model: string) =>
+    api.post(`/presentations/${id}/slides/${index}/generate-image`, { model }),
 }
 
 export const apiKeysApi = {

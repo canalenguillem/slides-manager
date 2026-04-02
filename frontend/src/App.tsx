@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import PresentationView from './pages/PresentationView'
+import EditPresentation from './pages/EditPresentation'
 import Settings from './pages/Settings'
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/presentations/:id" element={<PresentationView />} />
+            <Route path="/presentations/:id/edit" element={<EditPresentation />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

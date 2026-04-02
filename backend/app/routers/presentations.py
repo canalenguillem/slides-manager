@@ -8,11 +8,11 @@ from app.database import get_db, get_mongo
 from app.models.user import User
 from app.models.api_key import APIKey, ProviderEnum
 from app.models.presentation import Presentation
-from app.schemas.presentation import PresentationResponse, PresentationDetail
+from app.schemas.presentation import PresentationResponse, PresentationDetail, SlideUpdate, GenerateSlideImageRequest
 from app.services.auth import get_current_user
 from app.services.encryption import decrypt_api_key
 from app.services.markdown_parser import parse_markdown_to_slides
-from app.services.image_service import enrich_slides_with_images
+from app.services.image_service import enrich_slides_with_images, generate_slide_image, LEONARDO_MODELS
 
 router = APIRouter()
 
@@ -204,6 +204,100 @@ async def generate_images(
         updated_at=presentation.updated_at,
         slides=enriched_slides,
     )
+
+
+@router.patch("/{presentation_id}/slides/{slide_index}", response_model=dict)
+async def update_slide(
+    presentation_id: str,
+    slide_index: int,
+    body: SlideUpdate,
+    db: AsyncSession = Depends(get_db),
+    mongo=Depends(get_mongo),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Presentation).where(
+            Presentation.id == presentation_id,
+            Presentation.user_id == current_user.id,
+        )
+    )
+    presentation = result.scalar_one_or_none()
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    mongo_doc = await mongo["presentations"].find_one(
+        {"_id": ObjectId(presentation.mongo_doc_id)}
+    )
+    if not mongo_doc:
+        raise HTTPException(status_code=404, detail="Slide data not found")
+
+    slides = mongo_doc.get("slides", [])
+    if slide_index < 0 or slide_index >= len(slides):
+        raise HTTPException(status_code=404, detail="Slide index out of range")
+
+    slides[slide_index] = {
+        **slides[slide_index],
+        "title": body.title,
+        "content": [c.model_dump() for c in body.content],
+    }
+
+    await mongo["presentations"].update_one(
+        {"_id": ObjectId(presentation.mongo_doc_id)},
+        {"$set": {"slides": slides}},
+    )
+    return slides[slide_index]
+
+
+@router.post("/{presentation_id}/slides/{slide_index}/generate-image", response_model=dict)
+async def generate_slide_image_endpoint(
+    presentation_id: str,
+    slide_index: int,
+    body: GenerateSlideImageRequest,
+    db: AsyncSession = Depends(get_db),
+    mongo=Depends(get_mongo),
+    current_user: User = Depends(get_current_user),
+):
+    if body.model not in LEONARDO_MODELS:
+        raise HTTPException(status_code=400, detail=f"Unknown model. Valid: {list(LEONARDO_MODELS)}")
+
+    result = await db.execute(
+        select(Presentation).where(
+            Presentation.id == presentation_id,
+            Presentation.user_id == current_user.id,
+        )
+    )
+    presentation = result.scalar_one_or_none()
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    mongo_doc = await mongo["presentations"].find_one(
+        {"_id": ObjectId(presentation.mongo_doc_id)}
+    )
+    if not mongo_doc:
+        raise HTTPException(status_code=404, detail="Slide data not found")
+
+    slides = mongo_doc.get("slides", [])
+    if slide_index < 0 or slide_index >= len(slides):
+        raise HTTPException(status_code=404, detail="Slide index out of range")
+
+    openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
+    leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
+    unsplash_key = await _get_api_key(ProviderEnum.unsplash, current_user.id, db)
+
+    updated_slide = await generate_slide_image(
+        slides[slide_index],
+        openai_api_key=openai_key,
+        leonardo_api_key=leonardo_key,
+        leonardo_model=body.model,
+        unsplash_api_key=unsplash_key,
+    )
+
+    slides[slide_index] = updated_slide
+    await mongo["presentations"].update_one(
+        {"_id": ObjectId(presentation.mongo_doc_id)},
+        {"$set": {"slides": slides}},
+    )
+    return updated_slide
 
 
 @router.delete("/{presentation_id}", status_code=status.HTTP_204_NO_CONTENT)
