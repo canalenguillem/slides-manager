@@ -21,12 +21,11 @@ export default function Dashboard() {
   }, [])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this presentation?')) return
     try {
       await presentationsApi.delete(id)
       setPresentations((prev) => prev.filter((p) => p.id !== id))
     } catch {
-      alert('Failed to delete presentation')
+      setError('Failed to delete presentation')
     }
   }
 

@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Presentation } from '../../types'
 
@@ -7,11 +8,26 @@ interface Props {
 }
 
 export default function PresentationCard({ presentation, onDelete }: Props) {
+  const [confirming, setConfirming] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const formatted = new Date(presentation.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   })
+
+  const handleDeleteClick = () => {
+    if (!confirming) {
+      setConfirming(true)
+      timerRef.current = setTimeout(() => setConfirming(false), 2500)
+    } else {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      onDelete(presentation.id)
+    }
+  }
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
   return (
     <article className="card p-5 flex flex-col gap-4 hover:shadow-md transition-shadow animate-fade-in">
@@ -36,10 +52,14 @@ export default function PresentationCard({ presentation, onDelete }: Props) {
         <span className="text-xs text-gray-400">{formatted}</span>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onDelete(presentation.id)}
-            className="text-xs text-gray-400 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50"
+            onClick={handleDeleteClick}
+            className={`text-xs transition-colors px-2 py-1 rounded ${
+              confirming
+                ? 'text-red-600 bg-red-50 font-medium'
+                : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+            }`}
           >
-            Delete
+            {confirming ? 'Sure?' : 'Delete'}
           </button>
           <Link
             to={`/presentations/${presentation.id}`}
