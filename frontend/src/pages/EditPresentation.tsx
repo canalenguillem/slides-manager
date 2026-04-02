@@ -144,7 +144,7 @@ export default function EditPresentation() {
   }
 
   return (
-    <div className="animate-fade-in max-w-4xl mx-auto">
+    <div className="animate-fade-in max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
@@ -180,124 +180,153 @@ export default function EditPresentation() {
       <div className="flex flex-col gap-6">
         {slides.map((slide, slideIdx) => (
           <div key={slideIdx} className="card p-0 overflow-hidden">
-            {/* Image preview bar */}
-            <div className="relative h-32 bg-gray-900 flex items-center justify-center">
-              {slide.image_url ? (
-                <img
-                  src={slide.image_url}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover opacity-70"
-                />
-              ) : (
-                <span className="text-gray-500 text-sm">No image</span>
-              )}
-              <div className="absolute inset-0 bg-black/30" />
-              <div className="relative z-10 flex items-center gap-3">
-                <button
-                  onClick={() => handleGenerateImage(slideIdx)}
-                  disabled={slide.generating}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/90 hover:bg-white text-gray-800 text-sm font-medium transition-colors disabled:opacity-60"
-                >
-                  {slide.generating ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-                      Generating…
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      Regenerate image
-                    </>
-                  )}
-                </button>
-              </div>
-              {/* Slide number badge */}
-              <span className="absolute top-2 left-3 z-10 text-xs font-mono text-white/60">
-                {slideIdx + 1} / {slides.length}
-              </span>
-              {/* Prompt tooltip */}
-              {slide.image_query && (
-                <span className="absolute bottom-2 left-3 right-3 z-10 text-xs text-white/50 truncate">
-                  {slide.image_query}
-                </span>
-              )}
-            </div>
+            <div className="grid grid-cols-[2fr_3fr]">
 
-            {/* Editor */}
-            <div className="p-5 flex flex-col gap-4">
-              {/* Title */}
-              <div>
-                <label className="label">Title</label>
-                <input
-                  className="input"
-                  value={slide.title}
-                  onChange={(e) => updateSlideField(slideIdx, { title: e.target.value })}
-                  placeholder="Slide title"
-                />
-              </div>
+              {/* LEFT — slide preview (16:9) */}
+              <div className="relative bg-gray-900 flex flex-col" style={{ aspectRatio: '16/9' }}>
+                {slide.image_url ? (
+                  <img
+                    src={slide.image_url}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover opacity-75"
+                  />
+                ) : null}
+                <div className="absolute inset-0 bg-black/40" />
 
-              {/* Content items */}
-              <div>
-                <label className="label">Content</label>
-                <div className="flex flex-col gap-2">
-                  {slide.content.map((item, contentIdx) => (
-                    <div key={contentIdx} className="flex items-center gap-2">
-                      <select
-                        value={item.type}
-                        onChange={(e) => handleContentTypeChange(slideIdx, contentIdx, e.target.value as SlideContent['type'])}
-                        className="input py-1.5 text-sm w-32 shrink-0"
-                      >
-                        {CONTENT_TYPES.map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                      <input
-                        className="input py-1.5 text-sm flex-1"
-                        value={item.text}
-                        onChange={(e) => handleContentChange(slideIdx, contentIdx, e.target.value)}
-                        placeholder="Text..."
-                      />
-                      <button
-                        onClick={() => handleRemoveContent(slideIdx, contentIdx)}
-                        className="shrink-0 text-gray-400 hover:text-red-500 transition-colors p-1"
-                        title="Remove"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
+                {/* Slide content overlay */}
+                <div className="relative z-10 flex flex-col h-full p-4">
+                  <span className="text-xs font-mono text-white/50 mb-auto">
+                    {slideIdx + 1} / {slides.length}
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    {slide.title && (
+                      <p className="text-white font-bold leading-tight text-sm line-clamp-2">
+                        {slide.title}
+                      </p>
+                    )}
+                    {slide.content.slice(0, 3).map((c, i) => (
+                      <p key={i} className="text-white/60 text-xs truncate">· {c.text}</p>
+                    ))}
+                    {slide.content.length > 3 && (
+                      <p className="text-white/40 text-xs">+{slide.content.length - 3} more</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Regenerate button */}
+                <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/20">
                   <button
-                    onClick={() => handleAddContent(slideIdx)}
-                    className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-1"
+                    onClick={() => handleGenerateImage(slideIdx)}
+                    disabled={slide.generating}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/90 hover:bg-white text-gray-800 text-sm font-medium transition-colors disabled:opacity-60 shadow"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add item
+                    {slide.generating ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                        Generating…
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Regenerate image
+                      </>
+                    )}
                   </button>
                 </div>
+
+                {/* Generating overlay (always visible when active) */}
+                {slide.generating && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/90 text-gray-800 text-sm font-medium shadow">
+                      <div className="w-3.5 h-3.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                      Generating…
+                    </div>
+                  </div>
+                )}
+
+                {/* Prompt hint */}
+                {slide.image_query && !slide.generating && (
+                  <div className="absolute bottom-0 left-0 right-0 z-10 px-3 py-1.5 bg-black/50">
+                    <p className="text-white/50 text-xs truncate">{slide.image_query}</p>
+                  </div>
+                )}
               </div>
 
-              {/* Footer actions */}
-              <div className="flex items-center justify-between pt-1">
-                {slide.error ? (
-                  <p className="text-sm text-red-600">{slide.error}</p>
-                ) : slide.saved ? (
-                  <p className="text-sm text-green-600">Saved</p>
-                ) : (
-                  <span />
-                )}
-                <button
-                  onClick={() => handleSaveSlide(slideIdx)}
-                  disabled={slide.saving}
-                  className="btn-primary text-sm py-1.5 px-4"
-                >
-                  {slide.saving ? 'Saving…' : 'Save slide'}
-                </button>
+              {/* RIGHT — editor */}
+              <div className="p-5 flex flex-col gap-4 border-l border-gray-100">
+                {/* Title */}
+                <div>
+                  <label className="label">Title</label>
+                  <input
+                    className="input"
+                    value={slide.title}
+                    onChange={(e) => updateSlideField(slideIdx, { title: e.target.value })}
+                    placeholder="Slide title"
+                  />
+                </div>
+
+                {/* Content items */}
+                <div className="flex-1">
+                  <label className="label">Content</label>
+                  <div className="flex flex-col gap-2">
+                    {slide.content.map((item, contentIdx) => (
+                      <div key={contentIdx} className="flex items-center gap-2">
+                        <select
+                          value={item.type}
+                          onChange={(e) => handleContentTypeChange(slideIdx, contentIdx, e.target.value as SlideContent['type'])}
+                          className="input py-1.5 text-xs w-28 shrink-0"
+                        >
+                          {CONTENT_TYPES.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                        <input
+                          className="input py-1.5 text-sm flex-1"
+                          value={item.text}
+                          onChange={(e) => handleContentChange(slideIdx, contentIdx, e.target.value)}
+                          placeholder="Text…"
+                        />
+                        <button
+                          onClick={() => handleRemoveContent(slideIdx, contentIdx)}
+                          className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => handleAddContent(slideIdx)}
+                      className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-1 w-fit"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add item
+                    </button>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  {slide.error ? (
+                    <p className="text-sm text-red-600">{slide.error}</p>
+                  ) : slide.saved ? (
+                    <p className="text-sm text-green-600">Saved ✓</p>
+                  ) : (
+                    <span />
+                  )}
+                  <button
+                    onClick={() => handleSaveSlide(slideIdx)}
+                    disabled={slide.saving}
+                    className="btn-primary text-sm py-1.5 px-4"
+                  >
+                    {slide.saving ? 'Saving…' : 'Save slide'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
