@@ -1,6 +1,26 @@
 import { useState } from 'react'
 import { Slide, SlideContent } from '../../types'
 
+/** Render inline markdown: **bold**, *italic*, ~~strike~~, `code` */
+function Inline({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|`[^`]+`)/g)
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**'))
+          return <strong key={i}>{part.slice(2, -2)}</strong>
+        if (part.startsWith('*') && part.endsWith('*'))
+          return <em key={i}>{part.slice(1, -1)}</em>
+        if (part.startsWith('~~') && part.endsWith('~~'))
+          return <s key={i}>{part.slice(2, -2)}</s>
+        if (part.startsWith('`') && part.endsWith('`'))
+          return <code key={i} className="font-mono bg-white/15 rounded px-1">{part.slice(1, -1)}</code>
+        return part
+      })}
+    </>
+  )
+}
+
 interface Props {
   slide: Slide
   current: number
@@ -99,7 +119,7 @@ function HeroSlide({ slide, current, total }: { slide: Slide; current: number; t
             className="mt-6 text-white/70 max-w-2xl leading-relaxed font-light"
             style={{ fontSize: 'clamp(16px, 2.2vw, 30px)' }}
           >
-            {subtitle.text}
+            <Inline text={subtitle.text} />
           </p>
         )}
 
@@ -142,7 +162,7 @@ function BulletItem({ item, index }: { item: SlideContent; index: number }) {
           <span className="w-1.5 h-1.5 rounded-full bg-white block" />
         )}
       </span>
-      <span>{item.text}</span>
+      <span><Inline text={item.text} /></span>
     </li>
   )
 }
@@ -161,7 +181,7 @@ function TableItem({ item }: { item: SlideContent }) {
                 key={i}
                 className="text-left text-white font-semibold pb-2 pr-6 border-b border-white/25"
               >
-                {h}
+                <Inline text={h} />
               </th>
             ))}
           </tr>
@@ -171,7 +191,7 @@ function TableItem({ item }: { item: SlideContent }) {
             <tr key={ri} className={ri % 2 === 0 ? 'bg-white/5' : ''}>
               {row.map((cell, ci) => (
                 <td key={ci} className="text-white/80 py-1.5 pr-6 border-b border-white/10">
-                  {cell}
+                  <Inline text={cell} />
                 </td>
               ))}
             </tr>
@@ -230,7 +250,7 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
                 className="text-white/80 leading-relaxed font-light"
                 style={{ fontSize: 'clamp(13px, 2vw, 24px)' }}
               >
-                {item.text}
+                <Inline text={item.text} />
               </p>
             ))}
           </div>
@@ -245,7 +265,7 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
                 className="text-white/70 font-semibold"
                 style={{ fontSize: 'clamp(13px, 1.8vw, 22px)' }}
               >
-                {item.text}
+                <Inline text={item.text} />
               </p>
             ))}
           </div>
