@@ -44,6 +44,8 @@ async def upload_presentation(
     title: str = Form(...),
     description: Optional[str] = Form(None),
     file: UploadFile = File(...),
+    provider: str = Form("leonardo"),
+    model: str = Form("gpt-image-1.5"),
     db: AsyncSession = Depends(get_db),
     mongo=Depends(get_mongo),
     current_user: User = Depends(get_current_user),
@@ -58,13 +60,16 @@ async def upload_presentation(
         raise HTTPException(status_code=400, detail="File must be UTF-8 encoded")
 
     raw_slides = parse_markdown_to_slides(markdown_text)
-    openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
-    leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
     unsplash_key = await _get_api_key(ProviderEnum.unsplash, current_user.id, db)
+    openai_key = leonardo_key = ""
+    if provider == "leonardo":
+        openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
+        leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
     slides = await enrich_slides_with_images(
         raw_slides,
         openai_api_key=openai_key,
         leonardo_api_key=leonardo_key,
+        leonardo_model=model,
         unsplash_api_key=unsplash_key,
     )
 

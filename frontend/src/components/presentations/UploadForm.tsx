@@ -16,6 +16,8 @@ export default function UploadForm({ onSuccess, onCancel }: Props) {
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [provider, setProvider] = useState<'unsplash' | 'leonardo'>('leonardo')
+  const [model, setModel] = useState('gpt-image-1.5')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleFileDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -50,6 +52,8 @@ export default function UploadForm({ onSuccess, onCancel }: Props) {
     const formData = new FormData()
     formData.append('title', title.trim())
     if (description.trim()) formData.append('description', description.trim())
+    formData.append('provider', provider)
+    formData.append('model', model)
 
     if (mode === 'file' && file) {
       formData.append('file', file)
@@ -97,6 +101,39 @@ export default function UploadForm({ onSuccess, onCancel }: Props) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description"
             />
+          </div>
+
+          {/* Image provider */}
+          <div>
+            <label className="label">Image generation</label>
+            <div className="flex items-center gap-3">
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+                <button
+                  type="button"
+                  onClick={() => setProvider('unsplash')}
+                  className={`px-3 py-1.5 transition-colors ${provider === 'unsplash' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Unsplash
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProvider('leonardo')}
+                  className={`px-3 py-1.5 transition-colors ${provider === 'leonardo' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Leonardo
+                </button>
+              </div>
+              {provider === 'leonardo' && (
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="input py-1.5 text-sm flex-1"
+                >
+                  <option value="gpt-image-1.5">GPT Image 1.5</option>
+                  <option value="phoenix">Phoenix</option>
+                </select>
+              )}
+            </div>
           </div>
 
           {/* Mode toggle */}
