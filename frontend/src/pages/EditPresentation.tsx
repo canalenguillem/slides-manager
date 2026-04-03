@@ -205,9 +205,14 @@ export default function EditPresentation() {
                     {slide.title && (
                       <p className="text-white font-bold text-sm leading-snug line-clamp-2">{slide.title}</p>
                     )}
-                    {slide.content.slice(0, 3).map((c, i) => (
-                      <p key={i} className="text-white/60 text-xs truncate">· {c.text}</p>
-                    ))}
+                    {slide.content
+                      .filter((c: SlideContent) => !/^\s*\|[\s|:=-]+\|\s*$/.test(c.text) && !/^`+$/.test(c.text.trim()))
+                      .slice(0, 3)
+                      .map((c: SlideContent, i: number) => (
+                        <p key={i} className="text-white/60 text-xs truncate">
+                          · {c.text.replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').replace(/\*+/g, '').replace(/\t/g, '  ')}
+                        </p>
+                      ))}
                     {slide.content.length > 3 && (
                       <p className="text-white/40 text-xs">+{slide.content.length - 3} more</p>
                     )}

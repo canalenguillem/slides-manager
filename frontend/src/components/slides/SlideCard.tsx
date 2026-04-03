@@ -167,10 +167,43 @@ function BulletItem({ item, index }: { item: SlideContent; index: number }) {
   )
 }
 
+/** Detect legacy text items that are pipe-delimited rows: | content | */
+function isPipeLine(text: string): boolean {
+  return /^\s*\|.+\|\s*$/.test(text) && !/^[\s|:-]+$/.test(text)
+}
+
+/** Strip surrounding pipes and whitespace from a legacy pipe row */
+function stripPipes(text: string): string {
+  return text.replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').trim()
+}
+
+// Single-column stacked layer boxes (OS architecture diagrams, etc.)
+function LayerTable({ rows }: { rows: string[] }) {
+  return (
+    <div className="flex flex-col gap-1 flex-1" style={{ fontSize: 'clamp(11px, 1.6vw, 18px)' }}>
+      {rows.map((row, i) => (
+        <div
+          key={i}
+          className="text-white/85 text-center py-1.5 px-3 border border-white/20 rounded bg-white/5"
+        >
+          <Inline text={row} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Table rendered as a styled grid
 function TableItem({ item }: { item: SlideContent }) {
   const rows = item.text.split('\n').map(r => r.split('\t'))
   const [headers, ...dataRows] = rows
+
+  // Single-column → render as layer boxes
+  if (headers.length === 1) {
+    const allRows = [headers[0], ...dataRows.map(r => r[0] ?? '')]
+    return <LayerTable rows={allRows} />
+  }
+
   return (
     <div className="overflow-x-auto flex-1">
       <table className="w-full border-collapse" style={{ fontSize: 'clamp(11px, 1.6vw, 18px)' }}>
@@ -205,7 +238,9 @@ function TableItem({ item }: { item: SlideContent }) {
 // Content layout: title + bullets/text/tables
 function ContentSlide({ slide, current, total }: { slide: Slide; current: number; total: number }) {
   const bullets = slide.content.filter(c => c.type === 'bullet' || c.type === 'numbered')
-  const texts = slide.content.filter(c => c.type === 'text')
+  // Separate legacy pipe rows from real text paragraphs
+  const texts = slide.content.filter(c => c.type === 'text' && !isPipeLine(c.text))
+  const legacyPipeRows = slide.content.filter(c => c.type === 'text' && isPipeLine(c.text)).map(c => stripPipes(c.text))
   const headings = slide.content.filter(c => c.type === 'heading2' || c.type === 'heading3')
   const tables = slide.content.filter(c => c.type === 'table')
 
@@ -269,6 +304,11 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
               </p>
             ))}
           </div>
+        )}
+
+        {/* Legacy pipe rows (old uploads stored as text with | pipes |) */}
+        {legacyPipeRows.length > 0 && (
+          <LayerTable rows={legacyPipeRows} />
         )}
 
         {/* Tables */}
