@@ -221,37 +221,6 @@ export default function EditPresentation() {
                     />
                   </div>
 
-                  {/* Image prompt */}
-                  <div>
-                    <label className="label">Image prompt</label>
-                    <div className="flex gap-2 items-start">
-                      <textarea
-                        className="input text-sm resize-none flex-1"
-                        rows={2}
-                        value={slide.prompt}
-                        onChange={(e) => updateSlideField(si, { prompt: e.target.value })}
-                        placeholder="Leave empty to auto-generate with OpenAI…"
-                      />
-                      <button
-                        onClick={() => handleGenerateImage(si)}
-                        disabled={slide.generating}
-                        className="btn-secondary text-sm py-1.5 px-3 shrink-0 flex items-center gap-1.5"
-                      >
-                        {slide.generating ? (
-                          <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                        Generate
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Divider */}
-                  <div className="border-t border-gray-100" />
-
                   {/* Content items */}
                   <div>
                     <label className="label">Content</label>
@@ -291,6 +260,34 @@ export default function EditPresentation() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
                         Add item
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Image prompt */}
+                  <div className="border-t border-gray-100 pt-3">
+                    <label className="label">Image prompt</label>
+                    <div className="flex gap-2 items-start">
+                      <textarea
+                        className="input text-sm resize-none flex-1"
+                        rows={2}
+                        value={slide.prompt}
+                        onChange={(e) => updateSlideField(si, { prompt: e.target.value })}
+                        placeholder="Leave empty to auto-generate with OpenAI…"
+                      />
+                      <button
+                        onClick={() => handleGenerateImage(si)}
+                        disabled={slide.generating}
+                        className="btn-secondary text-sm py-1.5 px-3 shrink-0 flex items-center gap-1.5"
+                      >
+                        {slide.generating ? (
+                          <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                        Generate
                       </button>
                     </div>
                   </div>
