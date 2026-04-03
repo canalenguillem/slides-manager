@@ -8,7 +8,7 @@ from app.database import get_db, get_mongo
 from app.models.user import User
 from app.models.api_key import APIKey, ProviderEnum
 from app.models.presentation import Presentation
-from app.schemas.presentation import PresentationResponse, PresentationDetail, SlideUpdate, GenerateSlideImageRequest
+from app.schemas.presentation import PresentationResponse, PresentationDetail, SlideUpdate, GenerateImagesRequest, GenerateSlideImageRequest
 from app.services.auth import get_current_user
 from app.services.encryption import decrypt_api_key
 from app.services.markdown_parser import parse_markdown_to_slides
@@ -156,6 +156,7 @@ async def get_presentation(
 @router.post("/{presentation_id}/generate-images", response_model=PresentationDetail)
 async def generate_images(
     presentation_id: str,
+    body: GenerateImagesRequest = GenerateImagesRequest(),
     db: AsyncSession = Depends(get_db),
     mongo=Depends(get_mongo),
     current_user: User = Depends(get_current_user),
@@ -180,13 +181,16 @@ async def generate_images(
         raise HTTPException(status_code=404, detail="Slide data not found")
 
     current_slides = mongo_doc.get("slides", [])
-    openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
-    leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
     unsplash_key = await _get_api_key(ProviderEnum.unsplash, current_user.id, db)
+    openai_key = leonardo_key = ""
+    if body.provider == "leonardo":
+        openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
+        leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
     enriched_slides = await enrich_slides_with_images(
         current_slides,
         openai_api_key=openai_key,
         leonardo_api_key=leonardo_key,
+        leonardo_model=body.model,
         unsplash_api_key=unsplash_key,
     )
 
@@ -280,9 +284,11 @@ async def generate_slide_image_endpoint(
     if slide_index < 0 or slide_index >= len(slides):
         raise HTTPException(status_code=404, detail="Slide index out of range")
 
-    openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
-    leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
     unsplash_key = await _get_api_key(ProviderEnum.unsplash, current_user.id, db)
+    openai_key = leonardo_key = ""
+    if body.provider == "leonardo":
+        openai_key = await _get_api_key(ProviderEnum.openai, current_user.id, db)
+        leonardo_key = await _get_api_key(ProviderEnum.leonardo, current_user.id, db)
 
     updated_slide = await generate_slide_image(
         slides[slide_index],

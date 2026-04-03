@@ -23,7 +23,13 @@ class SlideUpdate(BaseModel):
     content: list[SlideContent]
 
 
+class GenerateImagesRequest(BaseModel):
+    provider: str = "leonardo"   # "leonardo" | "unsplash"
+    model: str = "gpt-image-1.5"
+
+
 class GenerateSlideImageRequest(BaseModel):
+    provider: str = "leonardo"   # "leonardo" | "unsplash"
     model: str = "gpt-image-1.5"
     prompt: Optional[str] = None  # if set, skips OpenAI and uses this prompt directly
 

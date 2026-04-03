@@ -41,6 +41,7 @@ export default function EditPresentation() {
   const [slides, setSlides] = useState<SlideState[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [provider, setProvider] = useState<'unsplash' | 'leonardo'>('leonardo')
   const [model, setModel] = useState('gpt-image-1.5')
 
   useEffect(() => {
@@ -78,7 +79,7 @@ export default function EditPresentation() {
     updateSlideField(index, { generating: true, error: '' })
     try {
       const prompt = slides[index].prompt.trim() || undefined
-      const res = await presentationsApi.generateSlideImage(id, index, model, prompt)
+      const res = await presentationsApi.generateSlideImage(id, index, provider, model, prompt)
       updateSlideField(index, {
         generating: false,
         image_url: res.data.image_url,
@@ -148,17 +149,35 @@ export default function EditPresentation() {
           <p className="text-sm text-gray-500 mt-0.5">{slides.length} slides</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Image model</label>
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="input py-1.5 text-sm"
-          >
-            {LEONARDO_MODELS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
+        <div className="flex items-center gap-3">
+          {/* Provider toggle */}
+          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-sm">
+            <button
+              onClick={() => setProvider('unsplash')}
+              className={`px-3 py-1.5 transition-colors ${provider === 'unsplash' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Unsplash
+            </button>
+            <button
+              onClick={() => setProvider('leonardo')}
+              className={`px-3 py-1.5 transition-colors ${provider === 'leonardo' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Leonardo
+            </button>
+          </div>
+
+          {/* Model selector — only when Leonardo */}
+          {provider === 'leonardo' && (
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="input py-1.5 text-sm"
+            >
+              {LEONARDO_MODELS.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 

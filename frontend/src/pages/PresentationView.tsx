@@ -11,6 +11,8 @@ export default function PresentationView() {
   const [loading, setLoading] = useState(true)
   const [generatingImages, setGeneratingImages] = useState(false)
   const [imageMsg, setImageMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [imgProvider, setImgProvider] = useState<'unsplash' | 'leonardo'>('leonardo')
+  const [imgModel, setImgModel] = useState('gpt-image-1.5')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export default function PresentationView() {
     setGeneratingImages(true)
     setImageMsg(null)
     try {
-      const res = await presentationsApi.generateImages(id)
+      const res = await presentationsApi.generateImages(id, imgProvider, imgModel)
       setPresentation(res.data)
       setImageMsg({ type: 'success', text: `Images generated for ${presentation.slide_count} slides` })
     } catch {
@@ -95,6 +97,33 @@ export default function PresentationView() {
               </svg>
               Edit slides
             </Link>
+
+            {/* Provider selector */}
+            <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-sm">
+              <button
+                onClick={() => setImgProvider('unsplash')}
+                className={`px-3 py-1.5 transition-colors ${imgProvider === 'unsplash' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Unsplash
+              </button>
+              <button
+                onClick={() => setImgProvider('leonardo')}
+                className={`px-3 py-1.5 transition-colors ${imgProvider === 'leonardo' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Leonardo
+              </button>
+            </div>
+
+            {imgProvider === 'leonardo' && (
+              <select
+                value={imgModel}
+                onChange={(e) => setImgModel(e.target.value)}
+                className="input py-1.5 text-sm"
+              >
+                <option value="gpt-image-1.5">GPT Image 1.5</option>
+                <option value="phoenix">Phoenix</option>
+              </select>
+            )}
 
             <button
               onClick={handleGenerateImages}

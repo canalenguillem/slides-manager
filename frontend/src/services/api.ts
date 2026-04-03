@@ -39,11 +39,12 @@ export const presentationsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   delete: (id: string) => api.delete(`/presentations/${id}`),
-  generateImages: (id: string) => api.post(`/presentations/${id}/generate-images`),
+  generateImages: (id: string, provider: string, model: string) =>
+    api.post(`/presentations/${id}/generate-images`, { provider, model }),
   updateSlide: (id: string, index: number, data: { title: string; content: { type: string; text: string }[] }) =>
     api.patch(`/presentations/${id}/slides/${index}`, data),
-  generateSlideImage: (id: string, index: number, model: string, prompt?: string) =>
-    api.post(`/presentations/${id}/slides/${index}/generate-image`, { model, prompt: prompt || null }),
+  generateSlideImage: (id: string, index: number, provider: string, model: string, prompt?: string) =>
+    api.post(`/presentations/${id}/slides/${index}/generate-image`, { provider, model, prompt: prompt || null }),
 }
 
 export const apiKeysApi = {
