@@ -147,11 +147,47 @@ function BulletItem({ item, index }: { item: SlideContent; index: number }) {
   )
 }
 
-// Content layout: title + bullets/text
+// Table rendered as a styled grid
+function TableItem({ item }: { item: SlideContent }) {
+  const rows = item.text.split('\n').map(r => r.split('\t'))
+  const [headers, ...dataRows] = rows
+  return (
+    <div className="overflow-x-auto flex-1">
+      <table className="w-full border-collapse" style={{ fontSize: 'clamp(11px, 1.6vw, 18px)' }}>
+        <thead>
+          <tr>
+            {headers.map((h, i) => (
+              <th
+                key={i}
+                className="text-left text-white font-semibold pb-2 pr-6 border-b border-white/25"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dataRows.map((row, ri) => (
+            <tr key={ri} className={ri % 2 === 0 ? 'bg-white/5' : ''}>
+              {row.map((cell, ci) => (
+                <td key={ci} className="text-white/80 py-1.5 pr-6 border-b border-white/10">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// Content layout: title + bullets/text/tables
 function ContentSlide({ slide, current, total }: { slide: Slide; current: number; total: number }) {
   const bullets = slide.content.filter(c => c.type === 'bullet' || c.type === 'numbered')
   const texts = slide.content.filter(c => c.type === 'text')
   const headings = slide.content.filter(c => c.type === 'heading2' || c.type === 'heading3')
+  const tables = slide.content.filter(c => c.type === 'table')
 
   const visibleBullets = bullets.slice(0, 5)
   const hasMore = bullets.length > 5
@@ -214,6 +250,11 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
             ))}
           </div>
         )}
+
+        {/* Tables */}
+        {tables.map((item, i) => (
+          <TableItem key={i} item={item} />
+        ))}
 
         {/* Bullets */}
         {visibleBullets.length > 0 && (

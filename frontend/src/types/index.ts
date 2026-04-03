@@ -7,7 +7,7 @@ export interface User {
 }
 
 export interface SlideContent {
-  type: 'bullet' | 'text' | 'heading2' | 'heading3' | 'numbered'
+  type: 'bullet' | 'text' | 'heading2' | 'heading3' | 'numbered' | 'table'
   text: string
 }
 
