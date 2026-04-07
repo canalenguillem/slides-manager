@@ -24,6 +24,45 @@ export default function PresentationView() {
       .finally(() => setLoading(false))
   }, [id])
 
+  const handleExportMarkdown = () => {
+    if (!presentation) return
+    const slides = presentation.slides.map((slide) => {
+      const lines: string[] = []
+      if (slide.title) lines.push(`# ${slide.title}`)
+      for (const item of slide.content) {
+        if (item.type === 'bullet') {
+          lines.push(`- ${item.text}`)
+        } else if (item.type === 'numbered') {
+          lines.push(`1. ${item.text}`)
+        } else if (item.type === 'heading2') {
+          lines.push(`## ${item.text}`)
+        } else if (item.type === 'heading3') {
+          lines.push(`### ${item.text}`)
+        } else if (item.type === 'table') {
+          const rows = item.text.split('\n').map((row) => {
+            const cells = row.split('\t')
+            return `| ${cells.join(' | ')} |`
+          })
+          lines.push(rows[0])
+          lines.push(`| ${rows[0].split('|').slice(1, -1).map(() => '---').join(' | ')} |`)
+          lines.push(...rows.slice(1))
+        } else {
+          lines.push(item.text)
+        }
+      }
+      return lines.join('\n')
+    })
+
+    const markdown = slides.join('\n\n---\n\n')
+    const blob = new Blob([markdown], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const handleDeleteSlide = async (index: number) => {
     if (!id || !presentation) return
     await presentationsApi.deleteSlide(id, index)
@@ -97,6 +136,13 @@ export default function PresentationView() {
               </svg>
               {presentation.slide_count} slides
             </div>
+
+            <button onClick={handleExportMarkdown} className="btn-secondary gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export .md
+            </button>
 
             <Link to={`/presentations/${id}/edit`} className="btn-secondary gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

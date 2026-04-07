@@ -1,9 +1,13 @@
 import asyncio
 import hashlib
 import logging
+import os
+import uuid as uuid_lib
 from typing import Any
 
 import httpx
+
+UPLOADS_DIR = "/app/uploads/images"
 
 from app.services.markdown_parser import _generate_image_query
 
@@ -108,7 +112,13 @@ async def _leonardo_start(
             timeout=30.0,
         )
         if r.status_code == 200:
-            return r.json()["sdGenerationJob"]["generationId"]
+            data = r.json()
+            gen_id = (
+                data.get("sdGenerationJob", {}).get("generationId")
+                or data.get("generationJob", {}).get("generationId")
+            )
+            if gen_id:
+                return gen_id
         logger.warning("Leonardo start returned %s: %s", r.status_code, r.text[:300])
     except Exception as exc:
         logger.warning("Leonardo start failed: %s", exc)
@@ -188,6 +198,27 @@ async def _resolve_picsum(query: str, client: httpx.AsyncClient) -> str:
     return source
 
 
+# ── Local image storage ───────────────────────────────────────────────────────
+
+async def _download_and_store(url: str, client: httpx.AsyncClient) -> str | None:
+    """Download an external image URL and persist it locally. Returns local path."""
+    try:
+        os.makedirs(UPLOADS_DIR, exist_ok=True)
+        r = await client.get(url, timeout=30.0, follow_redirects=True)
+        if r.status_code == 200:
+            content_type = r.headers.get("content-type", "")
+            ext = "png" if "png" in content_type else "webp" if "webp" in content_type else "jpg"
+            filename = f"{uuid_lib.uuid4().hex}.{ext}"
+            filepath = os.path.join(UPLOADS_DIR, filename)
+            with open(filepath, "wb") as f:
+                f.write(r.content)
+            return f"/uploads/images/{filename}"
+        logger.warning("Failed to download image from %s: status %s", url, r.status_code)
+    except Exception as exc:
+        logger.warning("Failed to download/store image from %s: %s", url, exc)
+    return None
+
+
 # ── Single-slide image generation (used by the edit endpoint) ─────────────────
 
 async def generate_slide_image(
@@ -211,6 +242,9 @@ async def generate_slide_image(
                 if not prompt:
                     prompt = _generate_image_query(title, content)
             url = await _fetch_with_leonardo(prompt, leonardo_model, leonardo_api_key, client)
+            if url:
+                local = await _download_and_store(url, client)
+                url = local or url
             if not url:
                 url = await _fetch_unsplash(prompt, unsplash_api_key, client)
             if not url:
