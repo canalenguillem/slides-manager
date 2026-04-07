@@ -312,6 +312,49 @@ async def generate_slide_image_endpoint(
     return updated_slide
 
 
+@router.delete("/{presentation_id}/slides/{slide_index}", response_model=dict)
+async def delete_slide(
+    presentation_id: str,
+    slide_index: int,
+    db: AsyncSession = Depends(get_db),
+    mongo=Depends(get_mongo),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Presentation).where(
+            Presentation.id == presentation_id,
+            Presentation.user_id == current_user.id,
+        )
+    )
+    presentation = result.scalar_one_or_none()
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+
+    mongo_doc = await mongo["presentations"].find_one(
+        {"_id": ObjectId(presentation.mongo_doc_id)}
+    )
+    if not mongo_doc:
+        raise HTTPException(status_code=404, detail="Slide data not found")
+
+    slides = mongo_doc.get("slides", [])
+    if slide_index < 0 or slide_index >= len(slides):
+        raise HTTPException(status_code=404, detail="Slide index out of range")
+
+    slides.pop(slide_index)
+    for i, s in enumerate(slides):
+        s["index"] = i
+
+    await mongo["presentations"].update_one(
+        {"_id": ObjectId(presentation.mongo_doc_id)},
+        {"$set": {"slides": slides}},
+    )
+
+    presentation.slide_count = len(slides)
+    await db.commit()
+
+    return {"slide_count": len(slides)}
+
+
 @router.delete("/{presentation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_presentation(
     presentation_id: str,

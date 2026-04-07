@@ -18,6 +18,8 @@ interface SlideState {
   saving: boolean
   saved: boolean
   generating: boolean
+  deleting: boolean
+  confirmDelete: boolean
   error: string
 }
 
@@ -30,6 +32,8 @@ function initSlideStates(slides: Slide[]): SlideState[] {
     saving: false,
     saved: false,
     generating: false,
+    deleting: false,
+    confirmDelete: false,
     error: '',
   }))
 }
@@ -113,6 +117,18 @@ export default function EditPresentation() {
     setSlides((prev) =>
       prev.map((s, i) => (i !== si ? s : { ...s, content: s.content.filter((_, j) => j !== ci) }))
     )
+
+  const handleDeleteSlide = async (si: number) => {
+    if (!id) return
+    updateSlideField(si, { deleting: true })
+    try {
+      await presentationsApi.deleteSlide(id, si)
+      setSlides((prev) => prev.filter((_, i) => i !== si))
+      if (presentation) setPresentation({ ...presentation, slide_count: presentation.slide_count - 1 })
+    } catch {
+      updateSlideField(si, { deleting: false, confirmDelete: false, error: 'Failed to delete' })
+    }
+  }
 
   if (loading) {
     return (
@@ -319,20 +335,51 @@ export default function EditPresentation() {
 
                 {/* Sticky footer */}
                 <div className="shrink-0 flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-white">
-                  {slide.error ? (
-                    <p className="text-sm text-red-600">{slide.error}</p>
-                  ) : slide.saved ? (
-                    <p className="text-sm text-green-600">Saved ✓</p>
-                  ) : (
-                    <span />
-                  )}
-                  <button
-                    onClick={() => handleSaveSlide(si)}
-                    disabled={slide.saving}
-                    className="btn-primary text-sm py-1.5 px-4"
-                  >
-                    {slide.saving ? 'Saving…' : 'Save slide'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {slide.error ? (
+                      <p className="text-sm text-red-600">{slide.error}</p>
+                    ) : slide.saved ? (
+                      <p className="text-sm text-green-600">Saved ✓</p>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {slide.confirmDelete ? (
+                      <>
+                        <button
+                          onClick={() => updateSlideField(si, { confirmDelete: false })}
+                          className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSlide(si)}
+                          disabled={slide.deleting}
+                          className="text-sm bg-red-500 hover:bg-red-600 text-white py-1.5 px-4 rounded-lg transition-colors flex items-center gap-1.5"
+                        >
+                          {slide.deleting ? (
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : 'Delete slide'}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => updateSlideField(si, { confirmDelete: true })}
+                        className="text-sm text-gray-400 hover:text-red-500 py-1.5 px-2 transition-colors"
+                        title="Delete this slide"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleSaveSlide(si)}
+                      disabled={slide.saving}
+                      className="btn-primary text-sm py-1.5 px-4"
+                    >
+                      {slide.saving ? 'Saving…' : 'Save slide'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

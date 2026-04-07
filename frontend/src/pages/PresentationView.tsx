@@ -24,6 +24,13 @@ export default function PresentationView() {
       .finally(() => setLoading(false))
   }, [id])
 
+  const handleDeleteSlide = async (index: number) => {
+    if (!id || !presentation) return
+    await presentationsApi.deleteSlide(id, index)
+    const updatedSlides = presentation.slides.filter((_, i) => i !== index).map((s, i) => ({ ...s, index: i }))
+    setPresentation({ ...presentation, slides: updatedSlides, slide_count: updatedSlides.length })
+  }
+
   const handleGenerateImages = async () => {
     if (!id || !presentation) return
     setGeneratingImages(true)
@@ -160,7 +167,7 @@ export default function PresentationView() {
         )}
       </div>
 
-      <SlideViewer slides={presentation.slides} title={presentation.title} />
+      <SlideViewer slides={presentation.slides} title={presentation.title} onDeleteSlide={handleDeleteSlide} />
 
       <div className="mt-4 text-center text-xs text-gray-400">
         Use ← → arrow keys to navigate · F to toggle fullscreen · Esc to go back

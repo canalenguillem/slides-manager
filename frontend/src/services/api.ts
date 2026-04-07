@@ -45,6 +45,8 @@ export const presentationsApi = {
     api.patch(`/presentations/${id}/slides/${index}`, data),
   generateSlideImage: (id: string, index: number, provider: string, model: string, prompt?: string) =>
     api.post(`/presentations/${id}/slides/${index}/generate-image`, { provider, model, prompt: prompt || null }),
+  deleteSlide: (id: string, index: number) =>
+    api.delete(`/presentations/${id}/slides/${index}`),
 }
 
 export const apiKeysApi = {

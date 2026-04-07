@@ -244,8 +244,7 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
   const headings = slide.content.filter(c => c.type === 'heading2' || c.type === 'heading3')
   const tables = slide.content.filter(c => c.type === 'table')
 
-  const visibleBullets = bullets.slice(0, 5)
-  const hasMore = bullets.length > 5
+  const visibleBullets = bullets
 
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden">
@@ -322,14 +321,6 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
             {visibleBullets.map((item, i) => (
               <BulletItem key={i} item={item} index={i} />
             ))}
-            {hasMore && (
-              <li
-                className="text-white/30 italic"
-                style={{ fontSize: 'clamp(11px, 1.5vw, 18px)' }}
-              >
-                + {bullets.length - 5} more…
-              </li>
-            )}
           </ul>
         )}
       </div>

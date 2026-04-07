@@ -6,12 +6,15 @@ import SlideCard from './SlideCard'
 interface Props {
   slides: Slide[]
   title: string
+  onDeleteSlide?: (index: number) => Promise<void>
 }
 
-export default function SlideViewer({ slides, title }: Props) {
+export default function SlideViewer({ slides, title, onDeleteSlide }: Props) {
   const [current, setCurrent] = useState(0)
   const [direction, setDirection] = useState<'next' | 'prev'>('next')
   const [fullscreen, setFullscreen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const total = slides.length
@@ -45,6 +48,15 @@ export default function SlideViewer({ slides, title }: Props) {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [prev, next, navigate, fullscreen])
+
+  const handleDeleteSlide = async () => {
+    if (!onDeleteSlide) return
+    setDeleting(true)
+    await onDeleteSlide(current)
+    setConfirmDelete(false)
+    setDeleting(false)
+    setCurrent((c) => Math.min(c, slides.length - 2))
+  }
 
   // Preload next slide's image
   useEffect(() => {
@@ -118,6 +130,42 @@ export default function SlideViewer({ slides, title }: Props) {
           </svg>
           <span className="font-medium tracking-wide uppercase">{title}</span>
         </button>
+
+        {onDeleteSlide && (
+          <div className="pointer-events-auto flex items-center gap-2">
+            {confirmDelete ? (
+              <>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="text-white/50 hover:text-white text-xs px-2 py-1 rounded transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteSlide}
+                  disabled={deleting}
+                  className="bg-red-500/80 hover:bg-red-500 text-white text-xs px-3 py-1 rounded transition-colors flex items-center gap-1"
+                >
+                  {deleting ? (
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Delete slide'
+                  )}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/10 transition-colors"
+                title="Delete this slide"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
 
         <button
           onClick={() => setFullscreen((f) => !f)}
