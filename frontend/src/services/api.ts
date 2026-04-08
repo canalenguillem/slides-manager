@@ -41,7 +41,7 @@ export const presentationsApi = {
   delete: (id: string) => api.delete(`/presentations/${id}`),
   generateImages: (id: string, provider: string, model: string) =>
     api.post(`/presentations/${id}/generate-images`, { provider, model }),
-  updateSlide: (id: string, index: number, data: { title: string; content: { type: string; text: string }[] }) =>
+  updateSlide: (id: string, index: number, data: { title: string; content: { type: string; text: string }[]; style?: object }) =>
     api.patch(`/presentations/${id}/slides/${index}`, data),
   generateSlideImage: (id: string, index: number, provider: string, model: string, prompt?: string) =>
     api.post(`/presentations/${id}/slides/${index}/generate-image`, { provider, model, prompt: prompt || null }),

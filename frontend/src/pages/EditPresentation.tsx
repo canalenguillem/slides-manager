@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { presentationsApi } from '../services/api'
-import { PresentationDetail, Slide, SlideContent } from '../types'
+import { PresentationDetail, Slide, SlideContent, SlideStyle } from '../types'
 
 const LEONARDO_MODELS = [
   { value: 'gpt-image-1.5', label: 'GPT Image 1.5 (Recommended)' },
@@ -14,7 +14,8 @@ interface SlideState {
   title: string
   content: SlideContent[]
   image_url?: string | null
-  prompt: string          // editable image prompt
+  prompt: string
+  style: SlideStyle
   saving: boolean
   saved: boolean
   generating: boolean
@@ -29,6 +30,7 @@ function initSlideStates(slides: Slide[]): SlideState[] {
     content: s.content.map((c) => ({ ...c })),
     image_url: s.image_url,
     prompt: s.image_query ?? '',
+    style: s.style ?? {},
     saving: false,
     saved: false,
     generating: false,
@@ -70,6 +72,7 @@ export default function EditPresentation() {
       await presentationsApi.updateSlide(id, index, {
         title: slides[index].title,
         content: slides[index].content,
+        style: slides[index].style,
       })
       updateSlideField(index, { saving: false, saved: true })
       setTimeout(() => updateSlideField(index, { saved: false }), 2500)
@@ -301,6 +304,68 @@ export default function EditPresentation() {
                         </svg>
                         Add item
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Style controls */}
+                  <div className="border-t border-gray-100 pt-3">
+                    <label className="label mb-2">Style</label>
+                    <div className="flex flex-wrap items-center gap-3">
+
+                      {/* Text color */}
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-gray-500">Text</label>
+                        <input
+                          type="color"
+                          value={slide.style.text_color ?? '#ffffff'}
+                          onChange={(e) => updateSlideField(si, { style: { ...slide.style, text_color: e.target.value } })}
+                          className="w-7 h-7 rounded cursor-pointer border border-gray-200 p-0.5"
+                          title="Text color"
+                        />
+                      </div>
+
+                      {/* Bold */}
+                      <button
+                        onClick={() => updateSlideField(si, { style: { ...slide.style, bold: !slide.style.bold } })}
+                        className={`px-2.5 py-1 rounded text-sm font-bold border transition-colors ${slide.style.bold ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'}`}
+                        title="Bold"
+                      >B</button>
+
+                      {/* Italic */}
+                      <button
+                        onClick={() => updateSlideField(si, { style: { ...slide.style, italic: !slide.style.italic } })}
+                        className={`px-2.5 py-1 rounded text-sm italic border transition-colors ${slide.style.italic ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'}`}
+                        title="Italic"
+                      >I</button>
+
+                      {/* Overlay color */}
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-gray-500">Fondo</label>
+                        <input
+                          type="color"
+                          value={slide.style.overlay_color ?? '#000000'}
+                          onChange={(e) => updateSlideField(si, { style: { ...slide.style, overlay_color: e.target.value } })}
+                          className="w-7 h-7 rounded cursor-pointer border border-gray-200 p-0.5"
+                          title="Background overlay color"
+                        />
+                      </div>
+
+                      {/* Overlay opacity */}
+                      <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
+                        <label className="text-xs text-gray-500 shrink-0">
+                          Opacidad {slide.style.overlay_opacity ?? 55}%
+                        </label>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={slide.style.overlay_opacity ?? 55}
+                          onChange={(e) => updateSlideField(si, { style: { ...slide.style, overlay_opacity: Number(e.target.value) } })}
+                          className="flex-1 accent-indigo-600"
+                          title="Overlay opacity"
+                        />
+                      </div>
+
                     </div>
                   </div>
 

@@ -244,11 +244,14 @@ async def update_slide(
     if slide_index < 0 or slide_index >= len(slides):
         raise HTTPException(status_code=404, detail="Slide index out of range")
 
-    slides[slide_index] = {
+    updated = {
         **slides[slide_index],
         "title": body.title,
         "content": [c.model_dump() for c in body.content],
     }
+    if body.style is not None:
+        updated["style"] = body.style.model_dump(exclude_none=True)
+    slides[slide_index] = updated
 
     await mongo["presentations"].update_one(
         {"_id": ObjectId(presentation.mongo_doc_id)},

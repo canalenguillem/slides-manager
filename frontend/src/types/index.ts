@@ -11,6 +11,14 @@ export interface SlideContent {
   text: string
 }
 
+export interface SlideStyle {
+  text_color?: string      // hex, default '#ffffff'
+  bold?: boolean
+  italic?: boolean
+  overlay_color?: string   // hex, default '#000000'
+  overlay_opacity?: number // 0-100, default 55
+}
+
 export interface Slide {
   index: number
   title: string
@@ -19,6 +27,7 @@ export interface Slide {
   raw: string
   image_query?: string
   image_url?: string | null
+  style?: SlideStyle
 }
 
 export interface Presentation {

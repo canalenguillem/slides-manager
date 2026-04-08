@@ -18,9 +18,18 @@ class Slide(BaseModel):
     image_url: Optional[str] = None
 
 
+class SlideStyle(BaseModel):
+    text_color: Optional[str] = None       # hex e.g. "#ffffff"
+    bold: Optional[bool] = None
+    italic: Optional[bool] = None
+    overlay_color: Optional[str] = None    # hex e.g. "#000000"
+    overlay_opacity: Optional[int] = None  # 0-100
+
+
 class SlideUpdate(BaseModel):
     title: str
     content: list[SlideContent]
+    style: Optional[SlideStyle] = None
 
 
 class GenerateImagesRequest(BaseModel):

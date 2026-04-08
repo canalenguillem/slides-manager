@@ -54,6 +54,9 @@ function SlideBackground({ slide }: { slide: Slide }) {
         : null))
     : null
 
+  const overlayColor = slide.style?.overlay_color ?? '#000000'
+  const overlayOpacity = (slide.style?.overlay_opacity ?? 55) / 100
+
   return (
     <div className="absolute inset-0" style={{ background: gradient }}>
       {imageUrl && (
@@ -65,9 +68,12 @@ function SlideBackground({ slide }: { slide: Slide }) {
           onError={() => setImgFailed(true)}
         />
       )}
-      {/* Layered overlays for max readability */}
-      <div className="absolute inset-0 bg-black/55" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
+      {/* Configurable overlay */}
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: overlayColor, opacity: overlayOpacity }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10" />
     </div>
   )
 }
@@ -138,28 +144,29 @@ function HeroSlide({ slide, current, total }: { slide: Slide; current: number; t
 }
 
 // Bullet item
-function BulletItem({ item, index }: { item: SlideContent; index: number }) {
+function BulletItem({ item, index, textColor }: { item: SlideContent; index: number; textColor: string }) {
   const isNumbered = item.type === 'numbered'
 
   return (
     <li
-      className="flex items-start gap-4 leading-snug text-white/90"
-      style={{ fontSize: 'clamp(14px, 2.2vw, 26px)', animationDelay: `${index * 60}ms` }}
+      className="flex items-start gap-4 leading-snug"
+      style={{ fontSize: 'clamp(14px, 2.2vw, 26px)', animationDelay: `${index * 60}ms`, color: textColor }}
     >
       <span
-        className="shrink-0 rounded-full flex items-center justify-center font-semibold text-white"
+        className="shrink-0 rounded-full flex items-center justify-center font-semibold"
         style={{
           width: 'clamp(20px, 2.2vw, 30px)',
           height: 'clamp(20px, 2.2vw, 30px)',
           minWidth: 'clamp(20px, 2.2vw, 30px)',
           marginTop: '0.2em',
-          background: isNumbered ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.25)',
+          color: textColor,
+          background: `${textColor}26`,
           fontSize: isNumbered ? 'clamp(10px, 1.2vw, 14px)' : 'clamp(8px, 1vw, 11px)',
         }}
       >
         {isNumbered ? index + 1 : ''}
         {!isNumbered && (
-          <span className="w-1.5 h-1.5 rounded-full bg-white block" />
+          <span className="w-1.5 h-1.5 rounded-full block" style={{ background: textColor }} />
         )}
       </span>
       <span><Inline text={item.text} /></span>
@@ -244,7 +251,9 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
   const headings = slide.content.filter(c => c.type === 'heading2' || c.type === 'heading3')
   const tables = slide.content.filter(c => c.type === 'table')
 
-  const visibleBullets = bullets
+  const textColor = slide.style?.text_color ?? '#ffffff'
+  const fontWeight = slide.style?.bold ? 'bold' : undefined
+  const fontStyle = slide.style?.italic ? 'italic' : undefined
 
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden">
@@ -265,15 +274,15 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
         {/* Title */}
         {slide.title && (
           <h2
-            className="font-bold text-white leading-tight tracking-tight mb-[4%]"
-            style={{ fontSize: 'clamp(28px, 5.5vw, 72px)' }}
+            className="leading-tight tracking-tight mb-[4%]"
+            style={{ fontSize: 'clamp(28px, 5.5vw, 72px)', color: textColor, fontWeight: fontWeight ?? 'bold', fontStyle }}
           >
             {slide.title}
           </h2>
         )}
 
         {/* Accent line */}
-        <div className="w-16 h-0.5 bg-white/30 mb-[4%] rounded-full" />
+        <div className="w-16 h-0.5 mb-[4%] rounded-full" style={{ background: textColor, opacity: 0.4 }} />
 
         {/* Text paragraphs */}
         {texts.length > 0 && (
@@ -281,8 +290,8 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
             {texts.map((item, i) => (
               <p
                 key={i}
-                className="text-white/80 leading-relaxed font-light"
-                style={{ fontSize: 'clamp(13px, 2vw, 24px)' }}
+                className="leading-relaxed"
+                style={{ fontSize: 'clamp(13px, 2vw, 24px)', color: textColor, fontWeight, fontStyle, opacity: 0.85 }}
               >
                 <Inline text={item.text} />
               </p>
@@ -296,8 +305,8 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
             {headings.map((item, i) => (
               <p
                 key={i}
-                className="text-white/70 font-semibold"
-                style={{ fontSize: 'clamp(13px, 1.8vw, 22px)' }}
+                className="font-semibold"
+                style={{ fontSize: 'clamp(13px, 1.8vw, 22px)', color: textColor, fontWeight, fontStyle, opacity: 0.8 }}
               >
                 <Inline text={item.text} />
               </p>
@@ -316,10 +325,10 @@ function ContentSlide({ slide, current, total }: { slide: Slide; current: number
         ))}
 
         {/* Bullets */}
-        {visibleBullets.length > 0 && (
+        {bullets.length > 0 && (
           <ul className="flex flex-col gap-[2.5%] flex-1">
-            {visibleBullets.map((item, i) => (
-              <BulletItem key={i} item={item} index={i} />
+            {bullets.map((item, i) => (
+              <BulletItem key={i} item={item} index={i} textColor={textColor} />
             ))}
           </ul>
         )}
